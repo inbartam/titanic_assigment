@@ -1,0 +1,28 @@
+# --- secrets: never commit credentials -------------------------------------
+kaggle.txt
+.kaggle/
+*.token
+
+# --- data: the full Kaggle dataset is fetched, not committed ---------------
+# Only data/sample_train.csv (a small stratified sample) is version-controlled.
+data/*
+!data/sample_train.csv
+
+# --- python ----------------------------------------------------------------
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# --- tooling caches --------------------------------------------------------
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+.mypy_cache/
+
+# --- OMC / editor ----------------------------------------------------------
+.omc/
+.vscode/
+.idea/

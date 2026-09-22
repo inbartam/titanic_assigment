@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "titanic"
+version = "0.1.0"
+description = "End-to-end Titanic survival classification: PyTorch models, inference service, Streamlit app"
+requires-python = ">=3.11"
+
+# Runtime dependencies are pinned in requirements.txt (which also carries the
+# torch CPU index URL). Keeping them out of here avoids two sources of truth.
+
+[tool.setuptools.packages.find]
+# The importable package lives in src/titanic (src-layout), which guarantees
+# that tests import the *installed* package rather than a stray local folder.
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+# E/W pycodestyle, F pyflakes, I import sorting, B bugbear, UP pyupgrade,
+# D pydocstyle (Google convention) so missing docstrings are a lint error.
+select = ["E", "W", "F", "I", "B", "UP", "D"]
+ignore = [
+    "D105",  # magic methods do not need docstrings
+    "D107",  # __init__ is documented in the class docstring instead
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+# Tests are self-describing through their names; docstrings there add noise.
+"tests/*" = ["D100", "D101", "D102", "D103"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

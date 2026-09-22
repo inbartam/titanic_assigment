@@ -1,0 +1,40 @@
+# PyTorch CPU wheels. This line MUST stay first: without it pip resolves the
+# large CUDA build of torch, which is useless on a CPU-only laptop.
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# --- core numerics ---------------------------------------------------------
+# Versions are pinned deliberately. Windows Smart App Control (enabled on the
+# development machine) blocks freshly-published, low-reputation native .pyd
+# files; pandas 3.0.x / scipy 1.18.x were blocked at import time while these
+# slightly older, widely-deployed builds load cleanly. See docs/DECISIONS.md.
+numpy==2.5.3
+pandas==2.3.3
+scipy==1.16.2
+scikit-learn==1.7.2
+joblib==1.6.0
+torch==2.14.0+cpu
+
+# --- dataset fetching ------------------------------------------------------
+kaggle==2.2.4
+
+# --- app, plots, API -------------------------------------------------------
+streamlit==1.64.0
+plotly==7.1.0
+fastapi==0.141.1
+uvicorn[standard]==0.53.0
+pydantic==2.13.5
+pydantic-settings==2.15.0
+prometheus-client==0.26.0
+httpx==0.28.1
+python-multipart==0.0.32
+psutil==7.2.2
+
+# --- notebook (EDA only) ---------------------------------------------------
+jupyter==1.1.1
+matplotlib==3.11.2
+seaborn==0.13.2
+
+# --- quality ---------------------------------------------------------------
+pytest==9.1.1
+ruff==0.16.8
+black==26.5.1
