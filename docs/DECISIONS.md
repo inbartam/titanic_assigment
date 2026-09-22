@@ -288,6 +288,47 @@ fold-to-fold spread (~0.08 ROC-AUC) is wider than the gap between a logistic reg
 gradient boosting. That is the finding: at n=712 these models are not reliably distinguishable,
 which is why every number in this project is reported with a confidence interval.
 
+### Implementation notes (added while building)
+
+**Q: The registry stores `"dir": "fast"` rather than `"artifacts/fast"` as ARCHITECTURE.md
+specified. Why the change?**
+A: A test caught it. The hardcoded `artifacts/<name>` prefix breaks the moment anyone passes
+`--artifacts-dir` to something not literally named `artifacts`, because the path was being
+resolved against the artifacts directory's *parent*. Storing the directory relative to the
+registry file means the whole tree can be moved, renamed or written anywhere and still resolve.
+`artifacts.bundle_dir()` still accepts the old form by keeping only the leaf, so an artifact
+produced before the change continues to load.
+
+**Q: Why is the Compare tab's conclusion paragraph generated rather than written?**
+A: Because a hand-written verdict goes stale the first time someone retrains. `honest_verdict()`
+derives it from the metrics: it finds the leading model, checks which others fall inside its
+95% interval, identifies the smallest model, and recommends the simplest model that is
+statistically indistinguishable from the best. If a retrain reorders the models, the paragraph
+reorders with them. It is also the project's central claim, so it should be computed from
+evidence rather than asserted.
+
+**Q: Why does `fast` sometimes beat `deep` and `attn`, and why leave that in the README?**
+A: Because it is the result. With 712 training rows, 9 features and dominant low-order signal,
+there is very little for extra capacity to learn, and the 95% intervals (roughly +/- 0.06 at
+n=179) are three times wider than the spread between best and worst model. Reporting `fast` as
+the model to ship is the defensible reading of those numbers. Hiding it by re-tuning against the
+validation set would be the actual failure.
+
+**Q: The service records metrics itself instead of using FastAPI middleware. Concretely, what
+does that buy?**
+A: Three things the load test makes visible. (1) The Streamlit app in local mode shows the same
+latency, usage and queue numbers with no server running. (2) There is exactly one inference code
+path, so app and API cannot drift. (3) The metrics describe *inference*, not HTTP: under load at
+concurrency 16 the report reads `queue=154ms preprocess=9.9ms inference=16.6ms`, which says the
+fix is capacity rather than a faster model. Middleware only sees total request time and could
+not have told us that.
+
+**Q: Why is `ds_app.py` only 169 lines when it renders six tabs?**
+A: Because every tab body lives in `app/tabs.py`, the widgets in `app/components.py` and the
+caching in `app/state.py`. The entry point does sidebar, data loading, one inference call and six
+dispatches. Keeping it that short is what makes it reviewable, and it forced the tabs to become
+independently testable functions rather than one long script.
+
 ---
 
 ## Change log
@@ -298,3 +339,4 @@ which is why every number in this project is reported with a confidence interval
 | 2026-09-23 | Instrumented `InferenceService` + FastAPI in scope; `attn` deferred to "if ahead" | "4 models" priority |
 | 2026-09-22 | Build on Python 3.14; pin pandas/scipy/scikit-learn below latest (Smart App Control); support `KGAT_` Kaggle tokens | "Python 3.12" rule |
 | 2026-09-22 | EDA splits before exploring; notebook generated from `notebooks/build_eda.py` | — |
+| 2026-09-22 | Registry stores bundle dirs relative to `registry.json`; Compare verdict generated from metrics | `"dir": "artifacts/<name>"` |

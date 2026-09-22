@@ -24,6 +24,10 @@ Read it top to bottom to understand the project, or jump to a module you are abo
   - [Split before looking](#split-before-looking)
   - [What the analysis actually found](#what-the-analysis-actually-found)
   - [`tests/test_notebook.py`](#teststest_notebookpy)
+- [Phase 3 — models, training and artifacts](#phase-3--models-training-and-artifacts)
+- [Phase 4 — evaluation and plots](#phase-4--evaluation-and-plots)
+- [Phase 5 — the service, the API and the app](#phase-5--the-service-the-api-and-the-app)
+- [Phase 6 — what the finished system actually measured](#phase-6--what-the-finished-system-actually-measured)
 
 ---
 
@@ -566,3 +570,226 @@ fast. They exist because `PLAN.md`'s risk register names notebook drift as a spe
   notebook with a visible exception is worse than no notebook.
 - `test_notebook_outputs_are_committed` fails if the notebook was committed unexecuted, which
   would leave a reviewer with a blank document.
+
+
+---
+
+## Phase 3 — models, training and artifacts
+
+### `src/titanic/models.py`
+
+Three architectures, one forward signature:
+
+```python
+forward(x_num: FloatTensor[B, 3], x_cat: LongTensor[B, 6]) -> FloatTensor[B]   # logits
+```
+
+**Logits, not probabilities.** That lets the training loop use `BCEWithLogitsLoss`, which folds
+the sigmoid into the loss in a numerically stable way — at extreme logits a separate
+sigmoid-then-BCE saturates and loses gradient. Callers apply `torch.sigmoid` once, at inference.
+
+**`squeeze(-1)`, not `squeeze()`.** Every model ends with it. A `(B, 1)` output compared against
+a `(B,)` target broadcasts into a `(B, B)` loss matrix — the loss still trains, badly, with no
+error. `squeeze(-1)` only removes the last dimension, so a batch of one stays `(1,)` rather than
+collapsing to a scalar.
+
+**`nn.ModuleList`, not a plain list.** A plain Python list of embeddings would be invisible to
+`.parameters()`, so the optimiser would never update them and `.to(device)` would leave them
+behind. `test_gradients_reach_every_parameter` catches exactly that class of wiring bug by
+asserting no parameter has `grad is None` after a backward pass.
+
+**`TitanicLinear` is logistic regression on purpose.** 34 parameters — one per one-hot slot,
+one per numeric feature, plus a bias. Implementing it in PyTorch rather than reaching for
+sklearn means it shares the loop, loss, optimiser, batching and seed with the MLP, so any gap
+between them is attributable to the architecture and nothing else.
+
+**`TitanicAttention`** gives each numeric feature its own `Linear(1, d)`: the token is the value
+times a learned direction plus a learned offset. A shared projection would make every numeric
+feature collinear in token space. `norm_first=True` (pre-LN) is what lets a 2-layer transformer
+train stably at this scale without a warmup schedule, and `enable_nested_tensor=False` is stated
+explicitly because the fast path it controls applies only to padded variable-length sequences,
+which these fixed 10-token rows are not.
+
+### `src/titanic/training.py`
+
+**`EarlyStopping` deep-copies the best weights.** Keeping a reference would alias the live
+parameters, so the "best" snapshot would keep changing as training continued and restoring it
+would be a no-op. Without `restore_best`, a model that overfits after epoch 40 gets saved in its
+overfitted state even though training correctly stopped at 60.
+
+**The carve-out is stratified.** With a 38% positive rate, a random 10% of 712 rows can easily
+land at 30% or 46% positive, making the stopping signal noisy for reasons that have nothing to
+do with the model.
+
+**`_run_epoch` serves both passes.** `torch.enable_grad()` or `torch.no_grad()` is chosen by
+whether an optimiser was passed, so there is one loop rather than two that can drift. Losses are
+weighted by batch size because the final batch is usually smaller and an unweighted mean would
+over-count it.
+
+**`cross_validate` refits the preprocessor inside every fold.** Fitting once outside the loop is
+the most common subtle CV bug — each fold's held-out rows would contribute to the imputation
+medians and scaling statistics. It also re-seeds per fold, so fold-to-fold variance measures
+data variance rather than initialisation noise.
+
+### `src/titanic/artifacts.py`
+
+**`state_dict`, not a pickled module.** A pickled module embeds the class path, so renaming or
+moving a class breaks every previously saved artifact. `build_model()` reconstructs the
+architecture from `model_config.json` and then loads the weights, which also means the config
+must be sufficient to rebuild the model — `test_round_trips_through_its_own_config` checks it.
+
+**`weights_only=True`** on `torch.load` refuses to execute arbitrary pickled code while reading
+a file from disk.
+
+**`Bundle.predict_proba` hides the framework.** It is the reason nothing in `app/` or `api/`
+ever branches on torch-versus-sklearn.
+
+**`gbdt/model.joblib` is the one non-JSON artifact.** scikit-learn has no clean JSON
+serialisation. The version that wrote it is recorded, and a mismatch warns rather than refusing,
+because a joblib artifact usually loads across minor versions and refusing would make the
+committed bundle useless to a reviewer with a slightly different install.
+
+### `train.py`
+
+The whole pipeline in one file, guaranteeing two invariants: the validation split is touched
+exactly once per model, and everything inference needs is written to disk.
+
+Its `except Exception` around each model is deliberate — one model failing must not discard the
+models already trained, because the registry tolerates a partial set and the app renders it.
+
+Two bugs found here, both worth remembering:
+
+- **`"%9,d"` is not valid printf.** Thousands separators are f-string grammar; the logging call
+  raised `ValueError: unsupported format character ','` only when the summary table printed, at
+  the very end of an otherwise successful run.
+- **The registry stored `"dir": "artifacts/<name>"`**, which broke under `--artifacts-dir`
+  because the path resolved against the artifacts directory's parent. Now stored relative to
+  `registry.json` itself.
+
+## Phase 4 — evaluation and plots
+
+`evaluation.py` produces numbers and arrays; `plots.py` turns them into figures. That separation
+is what lets `train.py` write HTML files and the app render interactive charts from one
+implementation.
+
+**The bootstrap is stratified.** Positives and negatives are resampled separately to their
+original counts, so every resample has the same class balance as the real evaluation set. An
+unstratified resample of 179 rows occasionally produces a single-class sample for which ROC-AUC
+is undefined, silently shrinking the sample the interval is computed from.
+
+**`average_precision_score`, not the trapezoid under the PR curve.** PR curves are not monotonic,
+so trapezoidal interpolation systematically overestimates. Average precision sums the rectangles
+exactly.
+
+**Brier score earns its place.** `test_brier_rewards_calibration_not_ranking` makes the point:
+predictions of `[0.01, 0.02, 0.98, 0.99]` and `[0.45, 0.46, 0.54, 0.55]` both rank perfectly and
+both score ROC-AUC 1.0, but only Brier notices that one is confident and the other is guessing.
+
+**Plot details that matter.** ROC gets `scaleanchor="x"` because a stretched ROC curve is
+misleading. The PR baseline is drawn at the base rate, not 0.5, because that is what no-skill
+means on imbalanced data. `metrics_comparison_fig` zooms the y-axis to the region the bars
+occupy — on a full 0–1 axis the 0.019 spread between these four models is invisible, and that
+spread is precisely what the reader must judge. Calibration marker size encodes the bin count,
+so a point resting on three passengers is visibly less trustworthy than one resting on fifty.
+
+## Phase 5 — the service, the API and the app
+
+### `src/titanic/service.py`
+
+The single object that touches a model at serve time.
+
+**Queue depth is the whole point.** `_acquire_slot` increments a waiting counter, tries to
+acquire the semaphore, then decrements it in *both* branches:
+
+```python
+with self._counter_lock:
+    self._waiting -= 1              # rejected requests are no longer waiting either
+    self.metrics.set_queue_depth(self._waiting)
+    if acquired:
+        self._inflight += 1
+```
+
+Leaking that counter on the rejection path would permanently inflate the gauge the Ops tab
+presents as an autoscaling signal. The distinction matters because in-flight saturates at
+`max_concurrency` the instant the service is busy and tells you nothing more, while depth keeps
+climbing and tells you how far behind you are. The load test shows it: in-flight capped at 2
+while depth reached 13.
+
+**The `finally` around the critical section** is what stops the service deadlocking after
+`max_concurrency` failures. `test_slot_is_released_when_inference_raises` fails three
+predictions in a row and then asserts a fourth still succeeds.
+
+**Timers wrap each stage separately** because "the model is slow" and "preprocessing is slow"
+have completely different fixes — and under load the answer turned out to be neither.
+
+### `src/titanic/metrics.py`
+
+Two readers of one recording. `/metrics` serves Prometheus text for a real scrape target;
+`/stats` serves exact p50/p95/p99 over a 2000-record `deque` because the app needs precise
+recent percentiles without anyone running a Prometheus server.
+
+Each registry owns a **private `CollectorRegistry`**. Using the process-global default would
+raise a duplicate-timeseries error the second time a test built a service.
+
+The probability histogram samples the first 200 rows per request: a 10 000-row request would
+otherwise dominate the distribution and cost more to record than the inference itself.
+
+### `api/main.py`
+
+A thin adapter. Routes parse, call the service, and let one `ERROR_MAP` turn typed exceptions
+into status codes — no route handler contains a status code.
+
+**`limiter.total_tokens = max_concurrency + max_queue + 8`** is subtle and necessary. anyio's
+default thread limiter is 40 threads; if it were smaller than what the service accepts, the
+threadpool would become a hidden second queue and the queue-depth metric would stop describing
+reality.
+
+**A bug the tests caught:** `/admin/reload` used `Depends(get_settings)`, which re-reads the
+*environment* rather than the settings the app was constructed with — so an app built with an
+admin token still behaved as though reloading were disabled. It now reads
+`request.app.state.settings`.
+
+### `app/`
+
+`client.py` defines a `Predictor` protocol with two implementations, and `ApiPredictor`
+translates HTTP error bodies back into the project's own exception types so the app's error
+handling is written once against one hierarchy.
+
+`build_predictor` probes `/health` with a 2-second timeout and falls back to local mode with a
+visible warning. The API is a bonus layer; the app must never depend on it.
+
+`state.py` uses `@st.cache_resource` for the predictor and `@st.cache_data` for dataframes. The
+distinction is load-bearing: `cache_data` copies its return value, so caching the predictor that
+way would fork the metrics registry and reset the Ops tab on every interaction.
+
+`components.honest_verdict()` writes the comparison paragraph from the numbers — leader, which
+models fall inside its interval, smallest model, recommendation. Generated rather than written
+so it cannot go stale after a retrain, and because the project's central claim should be
+computed from evidence rather than asserted.
+
+## Phase 6 — what the finished system actually measured
+
+Held-out validation, n = 179:
+
+| model | params | accuracy | ROC-AUC | to ship? |
+|---|---|---|---|---|
+| `fast` | 34 | 0.827 | 0.859 | **yes** |
+| `deep` | 1,281 | 0.821 | 0.859 | |
+| `gbdt` | 1,084 | 0.832 | 0.848 | |
+| `attn` | 7,361 | 0.788 | 0.840 | |
+
+Every point estimate falls inside every other model's 95% interval. The intervals are about
+±0.06 wide; the spread between best and worst is 0.019. A 34-parameter logistic regression
+matches a 7,361-parameter transformer, and the honest recommendation is the small one.
+
+The load test at concurrency 16 produced the other useful number:
+
+```
+p50=109.81 ms  p95=221.5 ms  p99=259.07 ms   ok=300  rejected=0
+peak_queue_depth=13  peak_inflight=2
+server p95 by stage: queue=154.267ms  preprocess=9.891ms  inference=16.608ms
+```
+
+Queue p95 of 154 ms against 16.6 ms of actual inference. Under load this service is not
+compute-bound, it is capacity-bound — which is the kind of conclusion per-stage timing exists to
+support and which HTTP middleware could never have produced.

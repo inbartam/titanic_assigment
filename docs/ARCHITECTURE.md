@@ -196,10 +196,13 @@ Torch models: `forward(x_num: FloatTensor[B,3], x_cat: LongTensor[B,6]) -> Float
 
 - `model_config.json` always contains `"framework": "torch" | "sklearn"`, `"name"`, the
   architecture/hyperparameters, `"n_params"`, `"seed"`, and library versions.
-- `registry.json`: `{"models": {"fast": {"dir": "artifacts/fast", "framework": "torch",
+- `registry.json`: `{"models": {"fast": {"dir": "fast", "framework": "torch",
   "trained_at": "...", "roc_auc": 0.86, "n_params": 25}, "deep": {...}, "attn": {...},
   "gbdt": {...}}, "default": "deep"}`. Entries are only written for models that actually trained;
-  the app must tolerate any subset.
+  the app must tolerate any subset. **`dir` is relative to `registry.json` itself** (not to the
+repository root, as an earlier draft of this document said), so the artifacts tree can be moved
+or written by `--artifacts-dir` and still resolve; `artifacts.bundle_dir()` performs the lookup
+and still accepts the older `artifacts/<name>` form.
 - `load_bundle(dir) -> Bundle(model, model_config, preprocessor, metrics, history)`; dispatches
   on `framework`: torch → build from config, `load_state_dict(torch.load(model.pt,
   map_location="cpu"))`, `eval()`; sklearn → `joblib.load(model.joblib)` with a version-mismatch
