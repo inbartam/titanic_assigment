@@ -19,6 +19,11 @@ Read it top to bottom to understand the project, or jump to a module you are abo
   - [`src/titanic/features.py`](#srctitanicfeaturespy)
   - [`src/titanic/preprocessing.py`](#srctitanicpreprocessingpy)
   - [What the fitted values actually look like](#what-the-fitted-values-actually-look-like)
+- [Phase 2 — the EDA notebook](#phase-2--the-eda-notebook)
+  - [How the notebook is built](#how-the-notebook-is-built)
+  - [Split before looking](#split-before-looking)
+  - [What the analysis actually found](#what-the-analysis-actually-found)
+  - [`tests/test_notebook.py`](#teststest_notebookpy)
 
 ---
 
@@ -448,3 +453,116 @@ fare_median = 14.4542    embarked_mode = S
 imputation in one line. Roughly 20% of ages are missing; imputing them globally would have
 turned every boy with an unrecorded age into a 28-year-old man and quietly destroyed the
 "children first" signal that is the second strongest effect in the dataset after sex.
+
+
+---
+
+## Phase 2 — the EDA notebook
+
+`notebooks/eda.ipynb` is the assignment's "exploratory data analysis in a Jupyter Notebook"
+deliverable. It is organised as eleven sections, each a **Question → Analysis → Finding →
+Decision** block, with seven figures. Every decision it reaches is one that
+`src/titanic/features.py` or `src/titanic/preprocessing.py` actually implements.
+
+### How the notebook is built
+
+`notebooks/build_eda.py` generates the `.ipynb`; `jupyter nbconvert --execute --inplace` runs
+it and stores the outputs. Two reasons:
+
+- **A notebook diff is unreadable.** `.ipynb` is JSON, so changing one word in a markdown cell
+  produces a diff tangled up with base64 PNG blobs. The generator is plain Python and reviews
+  like plain Python.
+- **It cannot be left half-executed.** Regenerating and re-running is one command, so the
+  committed notebook is always a complete, top-to-bottom run.
+
+The committed notebook is still an ordinary notebook: Restart & Run All works, and the outputs
+are saved so it renders on GitHub for a reviewer who has neither the dataset nor Kaggle
+credentials. The first cell falls back to `data/sample_train.csv` with a printed warning if
+`data/train.csv` has not been fetched.
+
+### Split before looking
+
+The first analysis cell does this:
+
+```python
+train_raw, val_raw = stratified_split(raw, SplitConfig())
+df = engineer(train_raw)
+del val_raw
+```
+
+`del val_raw` is the point of the cell. Everything below explores 712 rows; the 179 held-out
+rows are never plotted or summarised.
+
+This matters more than it first appears. Every decision the notebook reaches — impute Age by
+Title, treat Pclass as categorical, drop SibSp/Parch, exclude ticket-group features — is a
+modelling choice made *because of what a plot showed*. If those plots included the validation
+rows, the final "single unbiased evaluation" would be scoring a pipeline that was partly
+designed on the data it is being scored against. No code would have leaked; the analyst would
+have.
+
+### What the analysis actually found
+
+Numbers below are from the committed run on the real 712-row training split.
+
+| Section | Finding | Decision it drove |
+|---|---|---|
+| Target balance | 38.3% survived; a "nobody survived" model scores 0.617 accuracy | Report PR-AUC and F1 alongside accuracy, all with bootstrap CIs |
+| Missingness | Cabin 77%, Age 20%, Embarked 2 rows | Three different treatments, not one blanket imputation |
+| Duplicates / leakage | 0 duplicate rows; 33.1% share a ticket | Exclude batch-dependent features (see below) |
+| Sex × Pclass | Effects are not additive; Pclass spacing is not linear | Pclass as categorical; train a model ladder to measure the interaction |
+| Age by Title | Master ≈ 3, Mr ≈ 30, global ≈ 28.5; under-10s survived at 0.640 vs 0.383 overall | Impute Age by Title median |
+| Fare | 35.4× max/median ratio; **14 fares of exactly 0** | `log1p` (not `log`); keep outliers |
+| Family size | Peaks at 2–4, collapses at both ends | Use FamilySize; keep IsAlone as an explicit step |
+| Correlation | SibSp/Parch redundant once FamilySize exists | Final 9-feature set |
+| 5-fold CV | Expectation band ROC-AUC 0.86–0.89; fold spread 0.080 | Tiny hyperparameter grids; CIs on everything |
+
+Two outputs are worth calling out.
+
+**The ticket-group demonstration.** Section 4 prints this:
+
+```
+TicketGroupSize computed on a single-row request: 1
+The same passenger's true value in the training batch: 6
+```
+
+That is the entire argument against the feature, in two lines of output rather than a
+paragraph of theory. The same passenger gets a different feature value depending on who else
+happens to be in the file.
+
+**The cross-validation is itself leak-free.** The preprocessor is refitted *inside* every fold:
+
+```python
+for fold_train_idx, fold_val_idx in folds.split(df, y):
+    pre = Preprocessor().fit(fold_train)     # refit per fold, not once outside
+    xtr = np.hstack(pre.transform(fold_train))
+    xva = np.hstack(pre.transform(fold_val))
+```
+
+Fitting the preprocessor once outside the loop is the most common subtle mistake in
+cross-validation code: each fold's held-out rows would contribute to the imputation medians and
+scaling statistics. The effect is small on this dataset, but it is precisely the error this
+project exists to avoid, so the notebook demonstrates the correct pattern.
+
+**The band, and what it is for.** Both classical models land near ROC-AUC 0.86–0.89, and the
+fold-to-fold spread (0.080) is *wider than the gap between the two models*. Two consequences:
+a PyTorch model scoring far below that band has a bug rather than a modelling problem, and one
+scoring far above it has leaked. It is a measuring instrument for Phase 3, not a target.
+
+### `tests/test_notebook.py`
+
+Six static checks over the notebook JSON — they parse it, never execute it, so the suite stays
+fast. They exist because `PLAN.md`'s risk register names notebook drift as a specific risk:
+
+- `test_notebook_imports_feature_logic_instead_of_redefining_it` fails if the notebook contains
+  `def extract_title` or any other feature function. The notebook must import from
+  `titanic.features`.
+- `test_engineered_columns_cover_what_the_preprocessor_needs` asserts every modelled column is
+  either a raw Kaggle column or produced by `engineer()`.
+- `test_notebook_never_touches_the_forbidden_files` greps for `test.csv` and
+  `gender_submission.csv`.
+- `test_notebook_discards_the_validation_split` asserts `del val_raw` is still there, turning
+  the discipline described above into an enforced invariant rather than a markdown promise.
+- `test_notebook_ran_without_errors` fails if any cell has a stored traceback — a committed
+  notebook with a visible exception is worse than no notebook.
+- `test_notebook_outputs_are_committed` fails if the notebook was committed unexecuted, which
+  would leave a reviewer with a blank document.
