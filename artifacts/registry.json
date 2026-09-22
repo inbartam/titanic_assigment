@@ -4,23 +4,23 @@
     "fast": {
       "dir": "fast",
       "framework": "torch",
-      "trained_at": "2026-09-22T14:24:49+00:00",
-      "roc_auc": 0.8341238471673253,
-      "accuracy": 0.770949720670391,
+      "trained_at": "2026-09-22T14:35:01+00:00",
+      "roc_auc": 0.8587615283267457,
+      "accuracy": 0.8268156424581006,
       "n_params": 34
     },
     "deep": {
       "dir": "deep",
       "framework": "torch",
-      "trained_at": "2026-09-22T14:24:58+00:00",
-      "roc_auc": 0.8600790513833992,
-      "accuracy": 0.8324022346368715,
-      "n_params": 3489
+      "trained_at": "2026-09-22T14:35:38+00:00",
+      "roc_auc": 0.8588932806324111,
+      "accuracy": 0.8212290502793296,
+      "n_params": 1281
     },
     "gbdt": {
       "dir": "gbdt",
       "framework": "sklearn",
-      "trained_at": "2026-09-22T14:25:04+00:00",
+      "trained_at": "2026-09-22T14:35:44+00:00",
       "roc_auc": 0.8476943346508564,
       "accuracy": 0.8324022346368715,
       "n_params": 1084
@@ -28,12 +28,12 @@
     "attn": {
       "dir": "attn",
       "framework": "torch",
-      "trained_at": "2026-09-22T14:25:20+00:00",
+      "trained_at": "2026-09-22T14:36:07+00:00",
       "roc_auc": 0.8399209486166007,
       "accuracy": 0.7877094972067039,
       "n_params": 7361
     }
   },
   "default": "deep",
-  "updated_at": "2026-09-22T14:25:20+00:00"
+  "updated_at": "2026-09-22T14:36:07+00:00"
 }

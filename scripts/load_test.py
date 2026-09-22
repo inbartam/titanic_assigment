@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import logging
 import statistics
 import sys
 import time
@@ -32,6 +33,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from titanic.config import Paths  # noqa: E402
 from titanic.data import load_csv  # noqa: E402
+
+# httpx logs one INFO line per request, which would bury the report under 300
+# lines of noise. The report itself is the output of this script.
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 #: How often to sample /stats for the peak queue depth, in seconds. Frequent
 #: enough to catch a transient spike, cheap enough not to perturb the run.

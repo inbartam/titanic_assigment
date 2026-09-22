@@ -1,5 +1,79 @@
 {
-  "train_seconds": 0.17,
+  "cv_grid": [
+    {
+      "config": {
+        "max_depth": 3,
+        "learning_rate": 0.05
+      },
+      "k": 5,
+      "fold_roc_auc": [
+        0.904132,
+        0.860227,
+        0.912435,
+        0.869634,
+        0.882786
+      ],
+      "roc_auc_mean": 0.885843,
+      "roc_auc_std": 0.019849,
+      "log_loss_mean": 0.394804
+    },
+    {
+      "config": {
+        "max_depth": 3,
+        "learning_rate": 0.1
+      },
+      "k": 5,
+      "fold_roc_auc": [
+        0.904959,
+        0.86157,
+        0.910972,
+        0.871423,
+        0.896149
+      ],
+      "roc_auc_mean": 0.889014,
+      "roc_auc_std": 0.019235,
+      "log_loss_mean": 0.390899
+    },
+    {
+      "config": {
+        "max_depth": null,
+        "learning_rate": 0.05
+      },
+      "k": 5,
+      "fold_roc_auc": [
+        0.891529,
+        0.857438,
+        0.909718,
+        0.887837,
+        0.882365
+      ],
+      "roc_auc_mean": 0.885777,
+      "roc_auc_std": 0.016883,
+      "log_loss_mean": 0.402315
+    },
+    {
+      "config": {
+        "max_depth": null,
+        "learning_rate": 0.1
+      },
+      "k": 5,
+      "fold_roc_auc": [
+        0.895145,
+        0.861364,
+        0.896552,
+        0.888678,
+        0.880577
+      ],
+      "roc_auc_mean": 0.884463,
+      "roc_auc_std": 0.012858,
+      "log_loss_mean": 0.408848
+    }
+  ],
+  "cv": {
+    "roc_auc_mean": 0.889014,
+    "roc_auc_std": 0.019235
+  },
+  "train_seconds": 0.08,
   "config": {
     "max_depth": 3,
     "learning_rate": 0.1

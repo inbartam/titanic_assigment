@@ -1,4 +1,17 @@
 {
+  "cv": {
+    "k": 5,
+    "fold_roc_auc": [
+      0.872727,
+      0.833678,
+      0.812226,
+      0.854482,
+      0.851957
+    ],
+    "roc_auc_mean": 0.845014,
+    "roc_auc_std": 0.02054,
+    "log_loss_mean": 0.451909
+  },
   "epochs": [
     1,
     2,
@@ -229,7 +242,7 @@
   "stopped_early": true,
   "n_epochs_run": 43,
   "inner_val_size": 0.1,
-  "train_seconds": 6.87,
+  "train_seconds": 3.51,
   "config": {
     "type": "attn",
     "d_model": 16,

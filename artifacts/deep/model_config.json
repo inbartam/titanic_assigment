@@ -1,12 +1,13 @@
 {
   "type": "deep",
   "hidden": [
-    64,
-    32
+    32,
+    16
   ],
-  "dropout": 0.3,
+  "dropout": 0.4,
+  "weight_decay": 0.0001,
   "framework": "torch",
-  "n_params": 3489,
+  "n_params": 1281,
   "seed": 42,
   "versions": {
     "python": "3.14.7",
@@ -17,5 +18,5 @@
   },
   "name": "deep",
   "artifact_version": 1,
-  "saved_at": "2026-09-22T14:24:58+00:00"
+  "saved_at": "2026-09-22T14:35:38+00:00"
 }

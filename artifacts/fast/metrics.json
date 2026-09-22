@@ -2,65 +2,77 @@
   "model": "fast",
   "framework": "torch",
   "seed": 42,
-  "trained_at": "2026-09-22T14:24:49+00:00",
+  "trained_at": "2026-09-22T14:35:01+00:00",
   "n_train": 712,
   "n_val": 179,
   "n_params": 34,
   "threshold": 0.5,
   "validation": {
-    "accuracy": 0.770949720670391,
-    "precision": 0.7413793103448276,
-    "recall": 0.6231884057971014,
-    "f1": 0.6771653543307087,
+    "accuracy": 0.8268156424581006,
+    "precision": 0.796875,
+    "recall": 0.7391304347826086,
+    "f1": 0.7669172932330827,
     "threshold": 0.5,
     "n": 179,
-    "positive_rate": 0.3240223463687151,
-    "roc_auc": 0.8341238471673253,
-    "pr_auc": 0.7812874033886971,
-    "brier": 0.15498377896761054,
+    "positive_rate": 0.3575418994413408,
+    "roc_auc": 0.8587615283267457,
+    "pr_auc": 0.82777114143952,
+    "brier": 0.1357403578887938,
     "confusion_matrix": [
       [
-        95,
-        15
+        97,
+        13
       ],
       [
-        26,
-        43
+        18,
+        51
       ]
     ],
     "confusion": {
-      "true_negative": 95,
-      "false_positive": 15,
-      "false_negative": 26,
-      "true_positive": 43
+      "true_negative": 97,
+      "false_positive": 13,
+      "false_negative": 18,
+      "true_positive": 51
     }
   },
   "validation_ci95": {
     "accuracy": [
-      0.709497,
-      0.826816
+      0.776536,
+      0.882682
     ],
     "precision": [
-      0.645161,
-      0.833333
+      0.716365,
+      0.875
     ],
     "recall": [
-      0.507246,
-      0.73913
+      0.637681,
+      0.84058
     ],
     "f1": [
-      0.583317,
-      0.761212
+      0.691176,
+      0.842857
     ],
     "roc_auc": [
-      0.769463,
-      0.897635
+      0.7961,
+      0.91858
     ],
     "pr_auc": [
-      0.689855,
-      0.879928
+      0.751021,
+      0.903949
     ]
   },
-  "cv_train_split": {},
-  "inference_ms_per_1k_rows": 3.3458
+  "cv_train_split": {
+    "k": 5,
+    "fold_roc_auc": [
+      0.876653,
+      0.845661,
+      0.896656,
+      0.861637,
+      0.874263
+    ],
+    "roc_auc_mean": 0.870974,
+    "roc_auc_std": 0.016915,
+    "log_loss_mean": 0.427133
+  },
+  "inference_ms_per_1k_rows": 1.9536
 }

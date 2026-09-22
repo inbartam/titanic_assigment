@@ -2,7 +2,7 @@
   "model": "attn",
   "framework": "torch",
   "seed": 42,
-  "trained_at": "2026-09-22T14:25:20+00:00",
+  "trained_at": "2026-09-22T14:36:07+00:00",
   "n_train": 712,
   "n_val": 179,
   "n_params": 7361,
@@ -61,6 +61,18 @@
       0.890609
     ]
   },
-  "cv_train_split": {},
-  "inference_ms_per_1k_rows": 28.3039
+  "cv_train_split": {
+    "k": 5,
+    "fold_roc_auc": [
+      0.872727,
+      0.833678,
+      0.812226,
+      0.854482,
+      0.851957
+    ],
+    "roc_auc_mean": 0.845014,
+    "roc_auc_std": 0.02054,
+    "log_loss_mean": 0.451909
+  },
+  "inference_ms_per_1k_rows": 15.9514
 }
