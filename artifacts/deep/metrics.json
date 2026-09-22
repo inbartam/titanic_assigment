@@ -1,0 +1,66 @@
+{
+  "model": "deep",
+  "framework": "torch",
+  "seed": 42,
+  "trained_at": "2026-09-22T14:24:58+00:00",
+  "n_train": 712,
+  "n_val": 179,
+  "n_params": 3489,
+  "threshold": 0.5,
+  "validation": {
+    "accuracy": 0.8324022346368715,
+    "precision": 0.8421052631578947,
+    "recall": 0.6956521739130435,
+    "f1": 0.7619047619047619,
+    "threshold": 0.5,
+    "n": 179,
+    "positive_rate": 0.31843575418994413,
+    "roc_auc": 0.8600790513833992,
+    "pr_auc": 0.8390771021052448,
+    "brier": 0.1308700249428626,
+    "confusion_matrix": [
+      [
+        101,
+        9
+      ],
+      [
+        21,
+        48
+      ]
+    ],
+    "confusion": {
+      "true_negative": 101,
+      "false_positive": 9,
+      "false_negative": 21,
+      "true_positive": 48
+    }
+  },
+  "validation_ci95": {
+    "accuracy": [
+      0.776536,
+      0.882682
+    ],
+    "precision": [
+      0.757576,
+      0.92596
+    ],
+    "recall": [
+      0.594203,
+      0.797101
+    ],
+    "f1": [
+      0.678254,
+      0.839695
+    ],
+    "roc_auc": [
+      0.796146,
+      0.923455
+    ],
+    "pr_auc": [
+      0.765816,
+      0.910571
+    ]
+  },
+  "cv_train_split": {},
+  "inference_ms_per_1k_rows": 3.2095
+}

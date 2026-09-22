@@ -1,0 +1,19 @@
+# Theme and server settings for `streamlit run ds_app.py`.
+
+[theme]
+# Deep blue primary with a light neutral base: readable, and it matches the
+# Plotly palette used for the figures so the app reads as one system.
+primaryColor = "#4C72B0"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F3F5F9"
+textColor = "#1A1D24"
+font = "sans serif"
+
+[server]
+# Local-only delivery: the reviewer runs this on their own machine.
+headless = true
+# Telemetry off by default for a submission someone else will run.
+enableCORS = false
+
+[browser]
+gatherUsageStats = false

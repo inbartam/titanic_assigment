@@ -1,0 +1,21 @@
+{
+  "type": "attn",
+  "d_model": 16,
+  "n_heads": 4,
+  "n_layers": 2,
+  "dim_feedforward": 64,
+  "dropout": 0.2,
+  "framework": "torch",
+  "n_params": 7361,
+  "seed": 42,
+  "versions": {
+    "python": "3.14.7",
+    "torch": "2.14.0+cpu",
+    "sklearn": "1.7.2",
+    "numpy": "2.5.3",
+    "pandas": "2.3.3"
+  },
+  "name": "attn",
+  "artifact_version": 1,
+  "saved_at": "2026-09-22T14:25:20+00:00"
+}

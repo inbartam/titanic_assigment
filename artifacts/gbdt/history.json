@@ -1,0 +1,7 @@
+{
+  "train_seconds": 0.17,
+  "config": {
+    "max_depth": 3,
+    "learning_rate": 0.1
+  }
+}

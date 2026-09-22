@@ -1,0 +1,84 @@
+{
+  "categorical_cols": [
+    "Pclass",
+    "Sex",
+    "Embarked",
+    "Title",
+    "Deck",
+    "IsAlone"
+  ],
+  "imputation": {
+    "age_global_median": 28.5,
+    "age_median_by_title": {
+      "Master": 3.0,
+      "Miss": 22.0,
+      "Mr": 30.0,
+      "Mrs": 35.0,
+      "Rare": 49.0
+    },
+    "embarked_mode": "S",
+    "fare_median": 14.4542
+  },
+  "numeric_cols": [
+    "Age",
+    "LogFare",
+    "FamilySize"
+  ],
+  "scaling": {
+    "mean": {
+      "Age": 29.556769662921347,
+      "FamilySize": 1.8834269662921348,
+      "LogFare": 2.950801696896645
+    },
+    "std": {
+      "Age": 13.242330691732178,
+      "FamilySize": 1.5879304416008615,
+      "LogFare": 0.978941472932678
+    }
+  },
+  "version": 1,
+  "vocab": {
+    "Deck": {
+      "<UNK>": 0,
+      "A": 1,
+      "B": 2,
+      "C": 3,
+      "D": 4,
+      "E": 5,
+      "F": 6,
+      "G": 7,
+      "T": 8,
+      "U": 9
+    },
+    "Embarked": {
+      "<UNK>": 0,
+      "C": 1,
+      "Q": 2,
+      "S": 3
+    },
+    "IsAlone": {
+      "0": 1,
+      "1": 2,
+      "<UNK>": 0
+    },
+    "Pclass": {
+      "1": 1,
+      "2": 2,
+      "3": 3,
+      "<UNK>": 0
+    },
+    "Sex": {
+      "<UNK>": 0,
+      "female": 1,
+      "male": 2
+    },
+    "Title": {
+      "<UNK>": 0,
+      "Master": 1,
+      "Miss": 2,
+      "Mr": 3,
+      "Mrs": 4,
+      "Rare": 5
+    }
+  }
+}

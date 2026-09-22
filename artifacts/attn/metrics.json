@@ -1,0 +1,66 @@
+{
+  "model": "attn",
+  "framework": "torch",
+  "seed": 42,
+  "trained_at": "2026-09-22T14:25:20+00:00",
+  "n_train": 712,
+  "n_val": 179,
+  "n_params": 7361,
+  "threshold": 0.5,
+  "validation": {
+    "accuracy": 0.7877094972067039,
+    "precision": 0.7924528301886793,
+    "recall": 0.6086956521739131,
+    "f1": 0.6885245901639344,
+    "threshold": 0.5,
+    "n": 179,
+    "positive_rate": 0.29608938547486036,
+    "roc_auc": 0.8399209486166007,
+    "pr_auc": 0.8235033604687394,
+    "brier": 0.14351183268339285,
+    "confusion_matrix": [
+      [
+        99,
+        11
+      ],
+      [
+        27,
+        42
+      ]
+    ],
+    "confusion": {
+      "true_negative": 99,
+      "false_positive": 11,
+      "false_negative": 27,
+      "true_positive": 42
+    }
+  },
+  "validation_ci95": {
+    "accuracy": [
+      0.731704,
+      0.843575
+    ],
+    "precision": [
+      0.693869,
+      0.888889
+    ],
+    "recall": [
+      0.492754,
+      0.724638
+    ],
+    "f1": [
+      0.589286,
+      0.775217
+    ],
+    "roc_auc": [
+      0.775748,
+      0.90475
+    ],
+    "pr_auc": [
+      0.753528,
+      0.890609
+    ]
+  },
+  "cv_train_split": {},
+  "inference_ms_per_1k_rows": 28.3039
+}

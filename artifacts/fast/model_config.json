@@ -1,0 +1,16 @@
+{
+  "type": "fast",
+  "framework": "torch",
+  "n_params": 34,
+  "seed": 42,
+  "versions": {
+    "python": "3.14.7",
+    "torch": "2.14.0+cpu",
+    "sklearn": "1.7.2",
+    "numpy": "2.5.3",
+    "pandas": "2.3.3"
+  },
+  "name": "fast",
+  "artifact_version": 1,
+  "saved_at": "2026-09-22T14:24:50+00:00"
+}
