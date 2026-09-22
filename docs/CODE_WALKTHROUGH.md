@@ -15,6 +15,10 @@ Read it top to bottom to understand the project, or jump to a module you are abo
   - [`src/titanic/config.py`](#srctitanicconfigpy)
   - [`src/titanic/data.py`](#srctitanicdatapy)
   - [`tests/test_data.py`](#teststest_datapy)
+- [Phase 1 — features and the preprocessor](#phase-1--features-and-the-preprocessor)
+  - [`src/titanic/features.py`](#srctitanicfeaturespy)
+  - [`src/titanic/preprocessing.py`](#srctitanicpreprocessingpy)
+  - [What the fitted values actually look like](#what-the-fitted-values-actually-look-like)
 
 ---
 
@@ -269,3 +273,178 @@ mislead you later.
 **`test_sizes_and_disjointness`** asserts the two halves share no `PassengerId`. Row overlap
 between training and validation is the single most damaging bug possible in this project,
 and it would otherwise show up only as suspiciously good validation scores.
+
+
+---
+
+## Phase 1 — features and the preprocessor
+
+Phase 1 splits one job in two, along a line that matters: **stateless** transformations live
+in `features.py`, **fitted** ones live in `preprocessing.py`. Anything that has to *learn* a
+value from the training data — a median, a mean, a vocabulary — belongs on the fitted side,
+because that is precisely the code that can leak.
+
+### `src/titanic/features.py`
+
+**What:** pure functions turning raw Kaggle columns into modelling features.
+
+**Why pure:** the contract tested in `tests/test_features.py` is that every feature is
+computable **from a single row**. `test_row_features_are_independent_of_the_batch` engineers
+one row on its own and asserts it matches the same row engineered inside the full frame. That
+test is what keeps `TicketGroupSize` and `FarePerPerson` out of the codebase — both are counts
+over the batch, so at inference on one passenger they are always 1, which is not the value the
+model trained on.
+
+#### `extract_title(names)`
+
+The Kaggle name format is `"Surname, Title. Given Names"`, so the title is the text between
+the comma and the first period:
+
+```python
+_TITLE_AFTER_COMMA = r",\s*([^.]+)\."
+_TITLE_AT_START    = r"^\s*([A-Za-z]+)\."
+```
+
+The second pattern exists because not every name follows that format — `"Mme. Something"` has
+no comma and would silently become `Rare`. Only rows the primary pattern *missed* are retried
+with the looser one, so a well-formed name can never be reinterpreted by the fallback:
+
+```python
+raw = raw.where(raw.notna(), fallback)
+```
+
+`.where` rather than `.fillna`: `fillna` on an object-dtype column raises a pandas downcasting
+`FutureWarning`, and `.where` states the intent more directly anyway — keep the primary match,
+otherwise take the fallback.
+
+Then `.str.title()` normalises case so `"MR."` and `"mr."` both become `Mr` and the vocabulary
+does not split on capitalisation, aliases fold `Mlle`/`Ms` into `Miss` and `Mme` into `Mrs`,
+and anything left outside the four common titles becomes `Rare`. The function **never** returns
+a missing value: an unparseable name yields `Rare` rather than raising, because inference on
+messy user data must degrade, not crash.
+
+#### The smaller functions
+
+- **`family_size`** — `SibSp + Parch + 1`. Survival is non-monotonic in this value (families of
+  2–4 did best, solo travellers and very large families worst), which is why the raw counts are
+  dropped in favour of the total.
+- **`is_alone`** — kept as an explicit binary even though it is derivable from `FamilySize`,
+  because the survival drop at exactly size 1 is a *step*, and a linear model cannot represent
+  a step from one continuous input.
+- **`deck_from_cabin`** — first letter, `U` when missing. Note `str[:1]` rather than `str[0]`:
+  it returns `""` for an empty string instead of raising.
+- **`log_fare`** — `log1p`, not `log`, because a fare of exactly 0 appears in the data and
+  `log(0)` is undefined. Missing fares stay missing **on purpose**: imputing them needs a
+  *fitted* value, which belongs to the preprocessor.
+
+#### `engineer(df)`
+
+The single entry point used by training, inference and the notebook, so the notebook can never
+drift from the feature logic the model consumes. It copies the input (callers reuse the raw
+frame for display), then materialises absent `Cabin`/`Embarked` columns as NaN so that an
+absent column and an all-NaN column behave identically — the rule stated in
+`docs/ARCHITECTURE.md` section 2.
+
+### `src/titanic/preprocessing.py`
+
+**What:** the class that learns imputation values, scaling statistics and category
+vocabularies from the training split, and serialises them to JSON.
+
+**Why it is the most important file in the project:** this is where leakage would enter. If
+any fitted value were computed over data the model is later evaluated on, every number in the
+README would be optimistic and no test elsewhere would notice.
+
+#### The leakage guard
+
+`tests/test_preprocessing.py::test_transforming_validation_data_does_not_change_fitted_state`
+serialises the entire fitted state, transforms the validation split, serialises again, and
+asserts the two strings are identical. Comparing the *whole* state rather than a few named
+fields means a future contributor who adds a new fitted parameter gets it covered for free.
+
+You can also see the guard working in the real numbers: after transforming, the training split
+has numeric mean exactly 0 and std exactly 1, while the validation split has mean
+`[-0.047, 0.058, 0.066]`. If the validation columns came out at 0 and 1 too, the scaler would
+have been fitted on them — that asymmetry is what correctness looks like here.
+
+#### Order of operations in `transform`
+
+Fixed, and each step depends on the previous one:
+
+1. Impute `Embarked` with the fitted mode.
+2. Impute `Fare` with the fitted median.
+3. **Recompute** `LogFare` from the imputed fare.
+4. Impute `Age` from the title median, falling back to the global median.
+5. Standardise numerics, index-encode categoricals.
+
+Step 3 is the one that catches people. Imputing `LogFare` directly would apply a median taken
+on the wrong scale — `log1p(median(fare))` is not `median(log1p(fare))`. Recomputing from the
+imputed raw fare is the only correct order, and
+`test_missing_fare_is_imputed_before_log` pins it down by blanking **both** columns and
+asserting nothing comes back NaN.
+
+#### Why `fit` imputes before computing scaling statistics
+
+```python
+imputed = self._impute(df)
+for column in self.numeric_cols:
+    self.num_mean[column] = float(np.nanmean(values))
+```
+
+The statistics must describe exactly the values `transform` will later standardise. Computing
+the mean on raw data full of holes would describe only the *observed* subset and bias the
+result. `_impute` is shared by `fit` and `transform` for the same reason: two copies of this
+logic would eventually disagree.
+
+#### `<UNK>` at index 0
+
+Every vocabulary reserves index 0 for `UNKNOWN_TOKEN`. Unseen categories at inference map
+there instead of raising:
+
+```python
+keys = imputed[column].map(self._as_key)
+categorical[:, position] = keys.map(vocabulary).fillna(0).astype(np.int64).to_numpy()
+```
+
+`.map()` leaves unrecognised levels as NaN, and `fillna(0)` sends them to the reserved slot,
+which the embedding layer has a real weight row for. A user CSV with a deck letter that never
+appeared in training produces a prediction, not a stack trace.
+
+#### `_as_key` and the JSON key problem
+
+JSON object keys must be strings, but categories arrive as a mix of types — `Pclass` is an int,
+`Sex` a string, `IsAlone` a numpy int. Everything is stringified on **both** the fit and the
+transform path, so the mapping survives the round trip. The `is_integer()` branch handles a
+specific pandas behaviour: a column widens to float when any value is missing, which would
+otherwise make `3` and `3.0` two different levels.
+
+#### Persistence
+
+`save` writes `indent=2, sort_keys=True` so artifact diffs stay reviewable, with
+`encoding="utf-8"` stated explicitly because Windows would otherwise default to cp1252. `load`
+rejects an unrecognised `version` with a message naming the fix rather than misreading an old
+artifact — `test_load_rejects_an_unknown_schema_version` covers it.
+
+The `NotFittedError` is defined in this module rather than imported from scikit-learn, so the
+project owns its own exception hierarchy: the service layer maps its typed exceptions to HTTP
+codes and should not depend on sklearn's tree.
+
+### What the fitted values actually look like
+
+Fitted on the real 712-row training split:
+
+```
+Age median by Title            Cardinalities (incl. <UNK>)
+  Master      3.0                Pclass      4   <UNK> 1 2 3
+  Miss       22.0                Sex         3   <UNK> female male
+  Mr         30.0                Embarked    4   <UNK> C Q S
+  Mrs        35.0                Title       6   <UNK> Master Miss Mr Mrs Rare
+  Rare       49.0                Deck       10   <UNK> A B C D E F G T U
+  GLOBAL     28.5                IsAlone     3   <UNK> 0 1
+
+fare_median = 14.4542    embarked_mode = S
+```
+
+`Master` imputed at 3.0 against a global median of 28.5 is the entire argument for title-based
+imputation in one line. Roughly 20% of ages are missing; imputing them globally would have
+turned every boy with an unrecorded age into a 28-year-old man and quietly destroyed the
+"children first" signal that is the second strongest effect in the dataset after sex.
