@@ -111,7 +111,8 @@ listing available models; artifacts missing → `503 no_artifacts` with the `tra
 | `titanic_prediction_probability`              | Histogram | `model`                    | distribution of `p_survived` (0.0–1.0, 10 buckets)   |
 | `titanic_model_info`                          | Info      | `model, framework, n_params, trained_at, sklearn/torch version` | what is serving |
 | `titanic_model_load_duration_seconds`         | Gauge     | `model`                    | cold-start cost                                      |
-| `process_*`, `python_gc_*`                    | default   | —                          | CPU, RSS, GC from `prometheus_client`                |
+| `python_gc_*`                                 | default   | —                          | GC stats from `prometheus_client`                    |
+| `process_*`                                   | default   | —                          | CPU and RSS from `prometheus_client`. **Linux only** -- the collector reads `/proc` and emits nothing on Windows or macOS |
 
 Histogram buckets for latency: `(0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5)`.
 
@@ -137,16 +138,16 @@ estimates and the app should not need a Prometheus server).
                                "inference": {...}, "postprocess": {...}}},
   "queue": {"depth": 0, "max_depth_window": 17, "inflight": 1,
             "rejections": {"full": 0, "timeout": 0}, "max_concurrency": 2, "max_queue": 64},
-  "predictions": {"positive_rate_window": {"deep": 0.39}, "probability_hist": {"deep": [..10 bins..]}},
-  "models": {"deep": {"framework": "torch", "n_params": 3457, "loaded_ms": 84}, ...},
-  "process": {"rss_mb": 412.0, "cpu_percent": 3.2}
+  "predictions": {"positive_rate_window": {"deep": 0.39}, "train_base_rate": 0.3838},
+  "models": {"deep": {"framework": "torch", "n_params": 3457, "loaded_ms": 84}, ...}
 }
 ```
 
 The Streamlit **Ops** tab (see ARCHITECTURE §7) shows: request/row counters, latency
-percentiles per stage (Plotly bar), a live queue-depth/inflight gauge pair, error rate, the
-positive-rate drift line vs the validation base rate (0.38), and a "run load test" button in
-API mode that launches `scripts/load_test.py` and re-renders.
+percentiles per stage (Plotly bar), a live queue-depth/inflight gauge pair, error rate, and the
+positive-rate drift line vs the training base rate (0.3838). Process RSS/CPU is deliberately not
+surfaced in `/stats`: it is available on the Prometheus endpoint on Linux, and duplicating it as
+JSON would have meant carrying `psutil` purely for one tile.
 
 ---
 

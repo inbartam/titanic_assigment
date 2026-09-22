@@ -121,14 +121,11 @@ class SplitConfig:
             positive rate and n=179, an unstratified split can move the class
             balance by several points and shift accuracy by 1-2 points purely
             through sampling noise.
-        inner_val_size: Fraction of the *training* split carved out for early
-            stopping. The held-out validation set is never used for this.
     """
 
     test_size: float = 0.2
     seed: int = 42
     stratify: bool = True
-    inner_val_size: float = 0.1
 
 
 @dataclass(frozen=True)

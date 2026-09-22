@@ -82,9 +82,9 @@ paths = Paths()
 # Fall back to the committed 100-row sample so this notebook runs immediately
 # after a clone, with a clear warning that the numbers will be small-sample.
 if paths.train_csv.exists():
-    csv_path, using_full_data = paths.train_csv, True
+    csv_path = paths.train_csv
 else:
-    csv_path, using_full_data = paths.sample_csv, False
+    csv_path = paths.sample_csv
     print("WARNING: data/train.csv not found - using the 100-row sample.")
     print("         Run `python -m titanic.data --fetch` for the real analysis.\\n")
 

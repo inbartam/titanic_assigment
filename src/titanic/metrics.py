@@ -31,6 +31,8 @@ from prometheus_client import (
     Histogram,
     generate_latest,
 )
+from prometheus_client.gc_collector import GCCollector
+from prometheus_client.process_collector import ProcessCollector
 
 from titanic.config import TRAIN_BASE_RATE
 from titanic.utils import get_logger
@@ -136,6 +138,17 @@ class MetricsRegistry:
         """
         self.registry = CollectorRegistry()
         self.started_at = time.time()
+
+        # A private registry does not get the default collectors, so GC and
+        # process stats are registered explicitly -- any real deployment wants
+        # them next to the request metrics.
+        #
+        # ProcessCollector reads /proc, so it emits nothing on Windows and
+        # macOS; it is registered anyway because deployment targets are Linux
+        # and it costs one line. docs/API.md states the same limitation rather
+        # than promising metrics that a Windows reviewer will not see.
+        ProcessCollector(registry=self.registry)
+        GCCollector(registry=self.registry)
 
         # A deque with maxlen evicts the oldest record automatically, so the
         # window is bounded without any cleanup code.
@@ -440,13 +453,3 @@ class MetricsRegistry:
                 if sample.name.endswith("_total") and reason in counts:
                     counts[reason] = int(sample.value)
         return counts
-
-    def reset_window(self) -> None:
-        """Clear the recent-request window, keeping the Prometheus counters.
-
-        Prometheus counters are monotonic by definition and must never be
-        reset; only the app's recent-percentile window is cleared.
-        """
-        with self._lock:
-            self._window.clear()
-        self._max_queue_depth_seen = 0

@@ -1527,7 +1527,7 @@
   "stopped_early": false,
   "n_epochs_run": 300,
   "inner_val_size": 0.1,
-  "train_seconds": 2.82,
+  "train_seconds": 2.67,
   "config": {
     "type": "fast"
   }

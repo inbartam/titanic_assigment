@@ -74,7 +74,6 @@ class Bundle:
         preprocessor: The preprocessor fitted alongside this model.
         metrics: Held-out validation metrics.
         history: Training curves and CV grid; empty for sklearn.
-        directory: Where the bundle was loaded from.
     """
 
     name: str
@@ -83,7 +82,6 @@ class Bundle:
     preprocessor: Preprocessor
     metrics: dict[str, Any] = field(default_factory=dict)
     history: dict[str, Any] = field(default_factory=dict)
-    directory: Path | None = None
 
     @property
     def framework(self) -> str:
@@ -308,7 +306,6 @@ def load_bundle(directory: Path, name: str | None = None) -> Bundle:
         preprocessor=preprocessor,
         metrics=metrics,
         history=history,
-        directory=directory,
     )
 
 

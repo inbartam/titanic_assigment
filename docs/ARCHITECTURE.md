@@ -252,7 +252,7 @@ Page config: wide layout, title "Titanic Survival â€” Inference & Evaluation", ð
   counters (requests, rows, per model/endpoint, RPS), latency p50/p95/p99 overall and per stage
   (queue / preprocess / inference / postprocess) as a Plotly grouped bar, queue depth + in-flight
   + rejections as metric tiles, error rate, predicted positive rate vs the training base rate
-  (0.38) as a drift line, model info (framework, params, load time), process RSS/CPU. In API mode
+  (0.3838) as a drift line, and model info (framework, params, load time). In API mode
   a **Run load test** button runs `scripts/load_test.py` (N=200, concurrency 16) and re-renders
   so the queue-depth number visibly moves. Refresh button; no auto-polling.
 

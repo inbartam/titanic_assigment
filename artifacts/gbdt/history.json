@@ -73,7 +73,7 @@
     "roc_auc_mean": 0.889014,
     "roc_auc_std": 0.019235
   },
-  "train_seconds": 0.08,
+  "train_seconds": 0.09,
   "config": {
     "max_depth": 3,
     "learning_rate": 0.1

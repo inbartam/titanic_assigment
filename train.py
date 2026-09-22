@@ -66,11 +66,13 @@ DEEP_GRID: tuple[dict[str, Any], ...] = tuple(
     for weight_decay in (1e-4, 1e-3)
 )
 
-#: `fast` and `attn` are trained on a single fixed configuration. `fast` has
-#: one obvious setup (it is logistic regression); `attn` is time-boxed and its
-#: CV score is reported for context only.
+#: The configuration each model uses when no grid search runs. `fast` has one
+#: obvious setup (it is logistic regression); `attn` is time-boxed and its CV
+#: score is reported for context only; `deep` only falls back to this entry
+#: under --no-cv, since with CV its config comes from DEEP_GRID.
 FIXED_CONFIGS: dict[str, dict[str, Any]] = {
     "fast": {"type": "fast"},
+    "deep": {"type": "deep", "hidden": [64, 32], "dropout": 0.3},
     "attn": {
         "type": "attn",
         "d_model": 16,
@@ -291,9 +293,7 @@ def train_torch(
             weight_decay=config.get("weight_decay", train_config.weight_decay),
         )
     else:
-        config = FIXED_CONFIGS.get(name, {"type": name})
-        if name == "deep":
-            config = {"type": "deep", "hidden": [64, 32], "dropout": 0.3}
+        config = FIXED_CONFIGS[name]
         if args.cv:
             # Reported for context: `fast` and `attn` are not selected on it.
             logger.info("[%s] cross-validating the fixed configuration", name)

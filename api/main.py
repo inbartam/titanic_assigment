@@ -46,7 +46,13 @@ from titanic.schemas import (
     PredictResponse,
     SchemaInfo,
 )
-from titanic.service import MAX_ROWS, InferenceService, QueueFullError, QueueTimeoutError
+from titanic.service import (
+    MAX_ROWS,
+    InferenceService,
+    PredictionResult,
+    QueueFullError,
+    QueueTimeoutError,
+)
 from titanic.utils import get_logger
 
 logger = get_logger("api")
@@ -60,6 +66,30 @@ ERROR_MAP: dict[type[Exception], tuple[int, str]] = {
     QueueFullError: (503, "queue_full"),
     QueueTimeoutError: (503, "queue_timeout"),
 }
+
+
+def _prediction_rows(result: PredictionResult) -> list[PredictionRow]:
+    """Map a service result onto the wire format.
+
+    Both ``/predict`` and ``/predict/csv`` return the same per-row shape, so
+    the mapping lives here rather than being written twice and drifting.
+
+    Args:
+        result: What :meth:`InferenceService.predict` returned.
+
+    Returns:
+        One :class:`PredictionRow` per input row, in input order.
+    """
+    return [
+        PredictionRow(
+            passenger_id=(result.passenger_ids[i] if result.passenger_ids is not None else None),
+            p_survived=round(float(probability), 6),
+            prediction=int(prediction),
+        )
+        for i, (probability, prediction) in enumerate(
+            zip(result.probabilities, result.predictions, strict=True)
+        )
+    ]
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -266,23 +296,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
         result = await run_in_threadpool(service.predict, frame, body.model, body.threshold)
 
-        rows = [
-            PredictionRow(
-                passenger_id=(
-                    result.passenger_ids[i] if result.passenger_ids is not None else None
-                ),
-                p_survived=round(float(probability), 6),
-                prediction=int(prediction),
-            )
-            for i, (probability, prediction) in enumerate(
-                zip(result.probabilities, result.predictions, strict=True)
-            )
-        ]
         return PredictResponse(
             model=result.model,
             threshold=result.threshold,
             n=result.n,
-            predictions=rows,
+            predictions=_prediction_rows(result),
             latency_ms=result.latency_ms,
         )
 
@@ -319,18 +337,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 model=result.model,
                 threshold=result.threshold,
                 n=result.n,
-                predictions=[
-                    PredictionRow(
-                        passenger_id=(
-                            result.passenger_ids[i] if result.passenger_ids is not None else None
-                        ),
-                        p_survived=round(float(probability), 6),
-                        prediction=int(prediction),
-                    )
-                    for i, (probability, prediction) in enumerate(
-                        zip(result.probabilities, result.predictions, strict=True)
-                    )
-                ],
+                predictions=_prediction_rows(result),
                 latency_ms=result.latency_ms,
                 note=note,
             ).model_dump()

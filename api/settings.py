@@ -23,7 +23,6 @@ class Settings(BaseSettings):
         max_concurrency: Parallel inference slots.
         max_queue: Requests allowed to wait for a slot.
         queue_timeout_s: Maximum wait before a request is rejected.
-        default_model: Model used when a request does not name one.
         admin_token: Guards /admin/reload. Reload is disabled when unset.
         cors_origins: Origins allowed to call the API.
     """
@@ -34,16 +33,11 @@ class Settings(BaseSettings):
     max_concurrency: int = 2
     max_queue: int = 64
     queue_timeout_s: float = 5.0
-    default_model: str | None = None
     admin_token: str | None = None
 
     # Localhost only: the Streamlit app is the single intended browser client,
     # and a wildcard would be an unnecessary default on a service with no auth.
-    cors_origins: list[str] = [
-        "http://localhost:8501",
-        "http://127.0.0.1:8501",
-        "http://localhost:3000",
-    ]
+    cors_origins: list[str] = ["http://localhost:8501", "http://127.0.0.1:8501"]
 
 
 def get_settings() -> Settings:

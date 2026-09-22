@@ -31,8 +31,8 @@ from torch import nn
 MAX_EMBEDDING_DIM = 8
 
 
-def count_parameters(model: nn.Module, *, trainable_only: bool = True) -> int:
-    """Count a model's parameters.
+def count_parameters(model: nn.Module) -> int:
+    """Count a model's trainable parameters.
 
     Reported in ``model_config.json`` and shown in the app, because parameter
     count is the honest way to express "how much model is this?" next to a
@@ -40,12 +40,11 @@ def count_parameters(model: nn.Module, *, trainable_only: bool = True) -> int:
 
     Args:
         model: Any torch module.
-        trainable_only: Count only parameters with ``requires_grad``.
 
     Returns:
-        Total number of scalar parameters.
+        Total number of trainable scalar parameters.
     """
-    return sum(p.numel() for p in model.parameters() if p.requires_grad or not trainable_only)
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
 def embedding_dim(cardinality: int) -> int:
@@ -87,7 +86,6 @@ class TitanicLinear(nn.Module):
             cardinalities: Vocabulary size per categorical column.
         """
         super().__init__()
-        self.n_numeric = n_numeric
         self.cardinalities = list(cardinalities)
 
         n_inputs = n_numeric + sum(cardinalities)
@@ -149,7 +147,6 @@ class TitanicMLP(nn.Module):
             dropout: Dropout probability applied after every hidden layer.
         """
         super().__init__()
-        self.n_numeric = n_numeric
         self.cardinalities = list(cardinalities)
         self.hidden = list(hidden)
         self.dropout = dropout
@@ -239,7 +236,6 @@ class TitanicAttention(nn.Module):
                 "each head takes an equal slice of the token width."
             )
 
-        self.n_numeric = n_numeric
         self.cardinalities = list(cardinalities)
         self.d_model = d_model
         self.n_heads = n_heads

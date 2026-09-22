@@ -2,7 +2,7 @@
   "model": "fast",
   "framework": "torch",
   "seed": 42,
-  "trained_at": "2026-09-22T14:35:01+00:00",
+  "trained_at": "2026-09-22T21:52:25+00:00",
   "n_train": 712,
   "n_val": 179,
   "n_params": 34,
@@ -74,5 +74,5 @@
     "roc_auc_std": 0.016915,
     "log_loss_mean": 0.427133
   },
-  "inference_ms_per_1k_rows": 1.9536
+  "inference_ms_per_1k_rows": 1.7704
 }

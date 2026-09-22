@@ -194,7 +194,7 @@ async def run_load_test(args: argparse.Namespace) -> dict:
     return {
         "n": args.n,
         "concurrency": args.concurrency,
-        "model": args.model or final_stats.get("models", {}) and args.model,
+        "model": args.model,
         "rows_per_request": args.rows,
         "wall_seconds": round(wall_seconds, 2),
         "rps": round(args.n / wall_seconds, 1) if wall_seconds else 0.0,

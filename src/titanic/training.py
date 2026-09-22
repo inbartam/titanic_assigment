@@ -55,19 +55,15 @@ class EarlyStopping:
         best_epoch: Epoch that produced it.
     """
 
-    def __init__(
-        self, patience: int = 20, min_delta: float = 1e-4, *, restore_best: bool = True
-    ) -> None:
+    def __init__(self, patience: int = 20, min_delta: float = 1e-4) -> None:
         """Configure the stopper.
 
         Args:
             patience: Epochs without improvement before stopping.
             min_delta: Minimum decrease that counts as an improvement.
-            restore_best: Copy the best weights back into the model on stop.
         """
         self.patience = patience
         self.min_delta = min_delta
-        self.restore_best = restore_best
 
         self.best_loss = float("inf")
         self.best_epoch = 0
@@ -90,10 +86,9 @@ class EarlyStopping:
             self.best_loss = loss
             self.best_epoch = epoch
             self._epochs_without_improvement = 0
-            if self.restore_best:
-                # deepcopy onto the CPU: keeping a reference would alias the
-                # live parameters and the "best" snapshot would keep changing.
-                self._best_state = copy.deepcopy(model.state_dict())
+            # deepcopy: keeping a reference would alias the live parameters and
+            # the "best" snapshot would keep changing as training continued.
+            self._best_state = copy.deepcopy(model.state_dict())
         else:
             self._epochs_without_improvement += 1
             if self._epochs_without_improvement >= self.patience:
@@ -107,7 +102,9 @@ class EarlyStopping:
         Args:
             model: The model to restore in place.
         """
-        if self.restore_best and self._best_state is not None:
+        # None when no epoch ever improved on the initial loss, which can
+        # happen on a degenerate run; leaving the model as-is is correct then.
+        if self._best_state is not None:
             model.load_state_dict(self._best_state)
 
 
@@ -287,7 +284,7 @@ def train_torch_model(
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=config.lr, weight_decay=config.weight_decay
     )
-    stopper = EarlyStopping(patience=config.patience, restore_best=True)
+    stopper = EarlyStopping(patience=config.patience)
 
     history: dict[str, Any] = {
         "epochs": [],

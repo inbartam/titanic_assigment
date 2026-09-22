@@ -766,7 +766,7 @@
   "stopped_early": true,
   "n_epochs_run": 114,
   "inner_val_size": 0.1,
-  "train_seconds": 1.7,
+  "train_seconds": 1.75,
   "config": {
     "type": "deep",
     "hidden": [

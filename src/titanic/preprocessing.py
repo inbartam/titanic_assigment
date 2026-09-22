@@ -339,11 +339,6 @@ class Preprocessor:
         """
         return [len(self.vocab[column]) for column in self.categorical_cols]
 
-    @property
-    def is_fitted(self) -> bool:
-        """Whether :meth:`fit` has run."""
-        return self._fitted
-
     def to_dict(self) -> dict[str, Any]:
         """Serialise every learned parameter to a plain dictionary.
 

@@ -2,7 +2,7 @@
   "model": "deep",
   "framework": "torch",
   "seed": 42,
-  "trained_at": "2026-09-22T14:35:38+00:00",
+  "trained_at": "2026-09-22T21:53:01+00:00",
   "n_train": 712,
   "n_val": 179,
   "n_params": 1281,
@@ -65,5 +65,5 @@
     "roc_auc_mean": 0.872746,
     "roc_auc_std": 0.022279
   },
-  "inference_ms_per_1k_rows": 2.1117
+  "inference_ms_per_1k_rows": 2.2436
 }

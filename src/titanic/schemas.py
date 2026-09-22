@@ -23,9 +23,10 @@ class PassengerIn(BaseModel):
     values fitted on the training split.
     """
 
-    # populate_by_name plus the exact Kaggle capitalisation: a client can post
-    # the CSV's own column names without renaming anything.
-    model_config = ConfigDict(populate_by_name=True, extra="ignore")
+    # Field names use the exact Kaggle capitalisation, so a client can post a
+    # CSV's own column names unchanged. extra="ignore" lets a caller send the
+    # whole row, including columns the model does not use.
+    model_config = ConfigDict(extra="ignore")
 
     Pclass: Annotated[int, Field(ge=1, le=3, description="Ticket class: 1, 2 or 3")]
     Name: Annotated[str, Field(min_length=1, description="Full name, used to extract Title")]
@@ -39,7 +40,7 @@ class PassengerIn(BaseModel):
     Cabin: str | None = None
     Embarked: str | None = None
     Ticket: str | None = None
-    Survived: Annotated[int | None, Field(default=None, ge=0, le=1)] = None
+    Survived: Annotated[int | None, Field(default=None, ge=0, le=1)]
 
     @field_validator("Sex")
     @classmethod
@@ -91,7 +92,7 @@ class PredictRequest(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
     model: str | None = Field(default=None, description="Model name; registry default if omitted")
-    threshold: Annotated[float, Field(default=0.5, ge=0.0, le=1.0)] = 0.5
+    threshold: Annotated[float, Field(default=0.5, ge=0.0, le=1.0)]
     passengers: Annotated[list[PassengerIn], Field(min_length=1, max_length=10_000)]
 
 
@@ -144,20 +145,6 @@ class EvaluateResponse(BaseModel):
     confusion_matrix: list[list[int]]
     curves: dict[str, Any]
     latency_ms: dict[str, float]
-
-
-class ModelSummary(BaseModel):
-    """One entry of ``GET /models``."""
-
-    name: str
-    framework: str
-    n_params: int = 0
-    loaded: bool = False
-    trained_at: str | None = None
-    roc_auc: float | None = None
-    accuracy: float | None = None
-    validation: dict[str, Any] = Field(default_factory=dict)
-    validation_ci95: dict[str, list[float]] = Field(default_factory=dict)
 
 
 class HealthResponse(BaseModel):

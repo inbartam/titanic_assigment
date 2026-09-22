@@ -2,7 +2,7 @@
   "model": "gbdt",
   "framework": "sklearn",
   "seed": 42,
-  "trained_at": "2026-09-22T14:35:44+00:00",
+  "trained_at": "2026-09-22T21:53:07+00:00",
   "n_train": 712,
   "n_val": 179,
   "n_params": 1084,
@@ -65,5 +65,5 @@
     "roc_auc_mean": 0.889014,
     "roc_auc_std": 0.019235
   },
-  "inference_ms_per_1k_rows": 17.0978
+  "inference_ms_per_1k_rows": 17.8039
 }

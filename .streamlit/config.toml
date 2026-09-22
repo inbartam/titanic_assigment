@@ -11,9 +11,11 @@ font = "sans serif"
 
 [server]
 # Local-only delivery: the reviewer runs this on their own machine.
+# CORS and XSRF protection are left at their secure defaults; disabling CORS
+# would let any origin open a WebSocket to the app, which a local-only tool
+# has no reason to allow.
 headless = true
-# Telemetry off by default for a submission someone else will run.
-enableCORS = false
 
 [browser]
+# No telemetry from a submission someone else will run on their machine.
 gatherUsageStats = false
