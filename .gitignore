@@ -1,28 +1,110 @@
-# --- secrets: never commit credentials -------------------------------------
+# ===========================================================================
+# SECRETS — never commit credentials
+# ===========================================================================
+# Nothing in this project needs a secret at runtime: the app and the API read
+# trained artifacts from disk. Credentials are only used by `titanic.data`
+# to download train.csv from Kaggle, and they are always read from outside the
+# repository (~/.kaggle/ or environment variables). These rules exist so that a
+# credential dropped into the working directory cannot be committed by accident.
+
+# Kaggle, in every form the client accepts
 kaggle.txt
+kaggle.json
 .kaggle/
+access_token
 *.token
 
-# --- data: the full Kaggle dataset is fetched, not committed ---------------
-# Only data/sample_train.csv (a small stratified sample) is version-controlled.
+# Streamlit's own secrets file. This is the single highest-risk path in a
+# Streamlit project: `.streamlit/` IS committed here (for config.toml), and
+# secrets.toml is exactly where a future contributor would put an API key.
+.streamlit/secrets.toml
+
+# Environment files
+.env
+.env.*
+!.env.example
+*.envrc
+
+# Keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.jks
+*.keystore
+id_rsa*
+id_ed25519*
+*.ppk
+
+# Cloud provider credentials
+.aws/
+.azure/
+.gcloud/
+gcloud-service-key.json
+service-account*.json
+credentials.json
+client_secret*.json
+
+# Generic catch-alls for things people name obviously
+*secret*
+*secrets*
+*credential*
+*password*
+!*secrets*.md
+!*credential*.md
+
+# ===========================================================================
+# DATA — the full Kaggle dataset is fetched, not committed
+# ===========================================================================
+# Only data/sample_train.csv (100 stratified rows) is version-controlled, so
+# the app and the smoke tests run immediately after a clone with no Kaggle
+# account. test.csv and gender_submission.csv are never downloaded at all.
 data/*
 !data/sample_train.csv
 
-# --- python ----------------------------------------------------------------
+# ===========================================================================
+# PYTHON
+# ===========================================================================
 .venv/
+venv/
+env/
 __pycache__/
 *.py[cod]
 *.egg-info/
+*.egg
 build/
 dist/
+.Python
 
-# --- tooling caches --------------------------------------------------------
+# ===========================================================================
+# TOOLING CACHES
+# ===========================================================================
 .pytest_cache/
 .ruff_cache/
-.ipynb_checkpoints/
 .mypy_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+.hypothesis/
 
-# --- OMC / editor ----------------------------------------------------------
-.omc/
+# ===========================================================================
+# EDITORS AND OS
+# ===========================================================================
 .vscode/
 .idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# ===========================================================================
+# AGENT / SESSION STATE
+# ===========================================================================
+.omc/
+.claude/
+
+# NOTE: artifacts/ is deliberately NOT ignored. The trained bundles are 485 KB
+# and committing them is what lets a reviewer run the app immediately after
+# `git clone` with no Kaggle credentials. See docs/DECISIONS.md.
