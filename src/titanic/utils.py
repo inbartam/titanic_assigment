@@ -40,7 +40,7 @@ def set_seed(seed: int = DEFAULT_SEED, *, deterministic: bool = True) -> None:
             implementations. This costs a little speed but makes two runs on
             the same machine produce bit-identical weights. Across different
             operating systems or torch builds, floating-point kernels can still
-            differ in the last bits -- metrics reproduce to roughly three
+            differ in the last bits, so metrics reproduce to roughly three
             decimals, which is stated in the README.
 
     Note:
@@ -103,7 +103,7 @@ def timer() -> Iterator[dict[str, float]]:
         print(t["ms"])
 
     ``perf_counter`` is used rather than ``time.time`` because it is monotonic
-    and unaffected by system clock adjustments -- the correct choice for the
+    and unaffected by system clock adjustments, which suits the
     per-stage latency metrics the service records.
 
     Yields:

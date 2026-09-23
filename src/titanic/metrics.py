@@ -126,7 +126,7 @@ class MetricsRegistry:
 
     Each instance owns a private :class:`CollectorRegistry` rather than using
     the process-global default. Without that, constructing two registries in
-    one process -- which every test that builds a fresh service does -- raises
+    one process (which every test that builds a fresh service does) raises
     a duplicate-timeseries error.
     """
 
@@ -140,7 +140,7 @@ class MetricsRegistry:
         self.started_at = time.time()
 
         # A private registry does not get the default collectors, so GC and
-        # process stats are registered explicitly -- any real deployment wants
+        # process stats are registered explicitly; any real deployment wants
         # them next to the request metrics.
         #
         # ProcessCollector reads /proc, so it emits nothing on Windows and

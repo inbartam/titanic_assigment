@@ -1,7 +1,7 @@
 """Build notebooks/eda.ipynb programmatically.
 
-The notebook is generated rather than hand-authored so that it is reproducible
-and reviewable as source. Structure follows PLAN.md Phase 2: every analysis
+The notebook is generated rather than written by hand so that it is
+reproducible and can be reviewed as source. Structure follows PLAN.md Phase 2: every analysis
 section is a Question -> Analysis -> Finding -> Decision block, at most nine
 figures, and all feature logic is imported from titanic.features so the
 notebook can never drift from what the model actually consumes.
@@ -30,24 +30,25 @@ def code(text: str) -> None:
 # ===========================================================================
 
 md("""
-# Titanic Survival — Exploratory Data Analysis
+# Titanic Survival: Exploratory Data Analysis
 
-**Goal.** Understand the Kaggle Titanic training data well enough to justify every
-preprocessing and modelling choice made in `src/titanic/`, and to establish a realistic
-expectation band for model performance *before* any model is trained.
+**Goal.** Understand the Kaggle Titanic training data well enough to justify the
+preprocessing and modelling choices in `src/titanic/`, and to set a realistic expectation
+for model performance before any model is trained.
 
-**Ground rules for this notebook**
+**Ground rules for this notebook:**
 
-1. **Only `train.csv`.** `test.csv` and `gender_submission.csv` are never downloaded or read.
-2. **Split first, explore second.** The 80/20 stratified split happens in the very first
-   analysis cell, and everything below looks at the **training split only** (n = 712). The
-   179 held-out rows are not plotted, not summarised, and not used to choose anything. This
-   is stricter than most EDA notebooks: looking at the validation set biases the *analyst*,
-   which is a real, if unquantifiable, form of leakage.
-3. **No feature logic is written here.** Every engineered column comes from
+1. Only `train.csv` is used. `test.csv` and `gender_submission.csv` are never downloaded or
+   read.
+2. Split first, explore second. The 80/20 stratified split happens in the first analysis
+   cell, and everything below looks at the training split only (n = 712). The 179 held-out
+   rows are not plotted, not summarised, and not used to choose anything. This is stricter
+   than most EDA notebooks, but looking at the validation set biases the analyst, which is
+   a form of leakage even if it is hard to quantify.
+3. No feature logic is written here. Every engineered column comes from
    `titanic.features.engineer`, so this notebook and the training pipeline cannot disagree.
 
-Each section below is one block: **Question → Analysis → Finding → Decision.**
+Each section below follows the same pattern: Question, Analysis, Finding, Decision.
 """)
 
 code("""
@@ -85,7 +86,7 @@ if paths.train_csv.exists():
     csv_path = paths.train_csv
 else:
     csv_path = paths.sample_csv
-    print("WARNING: data/train.csv not found - using the 100-row sample.")
+    print("WARNING: data/train.csv not found, using the 100-row sample.")
     print("         Run `python -m titanic.data --fetch` for the real analysis.\\n")
 
 raw = load_csv(csv_path)
@@ -104,8 +105,8 @@ md("""
 
 **Question.** What data am I allowed to look at?
 
-**Analysis.** Create the same stratified 80/20 split the training pipeline uses — same
-function, same seed — and discard the validation half for the rest of this notebook.
+**Analysis.** Create the same stratified 80/20 split the training pipeline uses (same
+function, same seed) and set the validation half aside for the rest of this notebook.
 """)
 
 code("""
@@ -122,7 +123,8 @@ print(f"\\nengineered columns added: {[c for c in df.columns if c not in raw.col
 
 md("""
 **Finding.** 712 training rows, 179 held out. The engineered columns (`Title`, `FamilySize`,
-`IsAlone`, `Deck`, `LogFare`) come from `titanic.features.engineer` — not re-implemented here.
+`IsAlone`, `Deck`, `LogFare`) come from `titanic.features.engineer` and are not re-implemented
+here.
 
 **Decision.** All statistics, plots and the cross-validation below are computed on the 712-row
 training split. The held-out set is scored exactly once, in `train.py`, at the end.
@@ -163,14 +165,14 @@ print(f"\\nMajority-class baseline accuracy: {max(base_rate, 1 - base_rate):.3f}
 """)
 
 md("""
-**Finding.** Roughly **38% survived**, so the classes are moderately imbalanced. A model that
-predicts "nobody survived" scores about **0.62 accuracy** while being completely useless.
+**Finding.** Roughly 38% survived, so the classes are moderately imbalanced. A model that
+predicts "nobody survived" scores about 0.62 accuracy while being useless.
 
 **Decision.** Accuracy alone is not an acceptable headline metric. The project reports
-accuracy, precision, recall, F1, ROC-AUC **and PR-AUC**, because PR-AUC is far more sensitive
-to performance on the minority (survived) class — which is the class a user of this model
-actually cares about. Every metric is reported with a bootstrap confidence interval, because
-n = 179 in the held-out set is small enough that three decimal places would be dishonest.
+accuracy, precision, recall, F1, ROC-AUC and PR-AUC. PR-AUC is more sensitive to performance
+on the minority (survived) class, which is the class a user of this model cares about. Every
+metric comes with a bootstrap confidence interval, because with n = 179 in the held-out set,
+three decimal places on their own would overstate the precision.
 """)
 
 # ===========================================================================
@@ -194,7 +196,7 @@ missing_pct = missing_pct[missing_pct > 0]
 fig, ax = plt.subplots(figsize=(7, 3.2))
 bars = ax.barh(missing_pct.index[::-1], missing_pct.to_numpy()[::-1], color="#c44e52")
 ax.set_xlabel("% missing in the training split")
-ax.set_title("Figure 1 — Missing values by column")
+ax.set_title("Figure 1: Missing values by column")
 ax.set_xlim(0, 100)
 for bar, value in zip(bars, missing_pct.to_numpy()[::-1], strict=True):
     ax.text(value + 1.5, bar.get_y() + bar.get_height() / 2, f"{value:.1f}%", va="center")
@@ -208,19 +210,20 @@ md("""
 
 | column | missing | why it is missing | treatment |
 |---|---|---|---|
-| `Cabin` | ~77% | not recorded for most; *who* was recorded tracks class | keep as a level |
-| `Age` | ~20% | not recorded | impute — but not with one global number |
+| `Cabin` | ~77% | not recorded for most; who was recorded tracks class | keep as a level |
+| `Age` | ~20% | not recorded | impute, but not with one global number |
 | `Embarked` | 2 rows | clerical gap | impute with the mode |
 
 **Decision.**
-- `Cabin` → `Deck` = first letter, missing → **`U`** as its own category. Not having a recorded
-  cabin is itself informative (it correlates with lower class and lower survival), so throwing
-  the rows away or imputing a deck would destroy real signal. This also removes the need for a
-  separate `HasCabin` flag — `Deck == "U"` already is one.
-- `Age` → **median per `Title`**, justified in section 5 below.
-- `Embarked` → mode (`S`, Southampton, ~72% of passengers). Two rows do not deserve more.
+- `Cabin` becomes `Deck` (the first letter), and a missing cabin becomes its own category,
+  `U`. Not having a recorded cabin is informative in itself (it correlates with lower class
+  and lower survival), so dropping the rows or imputing a deck would throw away real signal.
+  It also makes a separate `HasCabin` flag unnecessary, since `Deck == "U"` already is one.
+- `Age` is imputed with the median per `Title`, justified in section 6 below.
+- `Embarked` is imputed with the mode (`S`, Southampton, ~72% of passengers). Two rows do not
+  justify anything more elaborate.
 
-All three values are **fitted on the training split and serialised** to
+All three fill values are fitted on the training split and saved to
 `artifacts/<model>/preprocessor.json`; nothing is recomputed at inference time.
 """)
 
@@ -233,10 +236,10 @@ md("""
 
 ## 4. Duplicates, and the features we deliberately refuse to use
 
-**Question.** Are there duplicate rows? And what about the group features that top the Kaggle
-leaderboards — ticket-group size and fare-per-person?
+**Question.** Are there duplicate rows? And what about the group features that show up in
+many top Kaggle solutions, ticket-group size and fare-per-person?
 
-**Analysis.** No figure; this is an argument, not a picture.
+**Analysis.** No figure for this one; the output below is enough.
 """)
 
 code("""
@@ -265,21 +268,21 @@ print(f"The same passenger's true value in the training batch: {ticket_group.ilo
 """)
 
 md("""
-**Finding.** No duplicate rows. Ticket-group size *does* carry signal — survival varies
-strongly with group size — but the last two lines of output show the problem: the same
-passenger has group size **1** when scored alone and a different value when scored inside a
-batch. The feature's meaning depends on which other rows happen to be in the file.
+**Finding.** No duplicate rows. Ticket-group size does carry signal (survival varies a lot
+with group size), but the last two lines of output show the problem: the same passenger has
+group size 1 when scored alone and a different value when scored inside a batch. The
+feature's value depends on which other rows happen to be in the file.
 
-**Decision.** `TicketGroupSize` and `FarePerPerson` are **excluded**, and
-`tests/test_features.py::test_does_not_add_batch_dependent_features` keeps them out. Two
-independent reasons:
+**Decision.** `TicketGroupSize` and `FarePerPerson` are excluded, and
+`tests/test_features.py::test_does_not_add_batch_dependent_features` keeps them out, for two
+separate reasons:
 
-1. **Train/serve skew.** The value at inference is not the value the model trained on.
-2. **Leakage within training.** Group size is a proxy for "did other members of this family
-   survive", which smuggles label information across rows of the same group.
+1. Train/serve skew: the value at inference is not the value the model trained on.
+2. Leakage within training: group size is a proxy for "did other members of this family
+   survive", which carries label information across rows of the same group.
 
-*Alternative considered:* fit a ticket → count lookup on the training split and default unseen
-tickets to 1. Technically leak-safe, but semantically brittle, and it fails the moment a real
+Alternative considered: fit a ticket-to-count lookup on the training split and default unseen
+tickets to 1. That is leak-safe, but brittle, and it gives the wrong answer as soon as a real
 passenger has a ticket the training set never saw. Rejected; recorded in `docs/DECISIONS.md`.
 """)
 
@@ -290,7 +293,7 @@ passenger has a ticket the training set never saw. Rejected; recorded in `docs/D
 md("""
 ---
 
-## 5. The dominant effect: sex, class, and their interaction
+## 5. The main effect: sex, class, and their interaction
 
 **Question.** Which raw variables actually separate survivors, and do they act independently?
 
@@ -317,7 +320,7 @@ for ax in axes:
     ax.set_ylim(0, 1)
     ax.axhline(base_rate, color="grey", ls="--", lw=1)
 
-fig.suptitle("Figure 2 - Survival by sex and class (dashed line = 38% base rate)", y=1.04)
+fig.suptitle("Figure 2: Survival by sex and class (dashed line = 38% base rate)", y=1.04)
 plt.show()
 
 pivot = df.pivot_table(
@@ -327,19 +330,19 @@ display(pivot.round(3))
 """)
 
 md("""
-**Finding.** Sex is overwhelmingly the strongest single predictor (~74% of women survived
-versus ~19% of men), and class matters a great deal on top of it. Critically, the third panel
-shows the effects are **not additive**: a third-class woman fares worse than a first-class
-woman by a far larger margin than the equivalent gap among men. Note too that `Pclass` is not
-linear — the 1st-to-2nd gap is much wider than the 2nd-to-3rd gap.
+**Finding.** Sex is by far the strongest single predictor (~74% of women survived versus
+~19% of men), and class matters a lot on top of it. The third panel shows the two effects are
+not additive: the gap between third-class and first-class women is much larger than the
+same gap among men. `Pclass` is also not linear: the 1st-to-2nd gap is much wider than the
+2nd-to-3rd gap.
 
 **Decision.**
-- `Pclass` is treated as **categorical**, not as a number. Three levels cost nothing and a
-  linear coefficient would misrepresent the spacing.
-- Because the interaction is real, a plain linear model is at a genuine disadvantage here.
-  This is exactly why the project trains a ladder: `fast` (linear, cannot represent the
-  interaction without explicit crosses), `deep` (MLP, learns it), and `gbdt` (trees, model
-  interactions natively). Comparing them *measures* how much the interaction is worth.
+- `Pclass` is treated as categorical, not as a number. Three levels cost nothing, and a
+  single linear coefficient would misrepresent the spacing.
+- Because the interaction is real, a plain linear model is at a disadvantage here. That is
+  one reason the project trains several models: `fast` (linear, cannot represent the
+  interaction without explicit crosses), `deep` (MLP, can learn it), and `gbdt` (trees,
+  handle interactions natively). Comparing them shows how much the interaction is worth.
 """)
 
 # ===========================================================================
@@ -365,14 +368,14 @@ sns.boxplot(data=df, x="Title", y="Age", order=order, ax=axes[0])
 global_median = df["Age"].median()
 axes[0].axhline(global_median, color="#c44e52", ls="--", lw=1.6,
                 label=f"global median = {global_median:.1f}")
-axes[0].set_title("Age by Title - the case against a global median")
+axes[0].set_title("Age by Title vs. the global median")
 axes[0].legend(fontsize=8)
 
 sns.histplot(data=df, x="Age", hue=TARGET_COLUMN, bins=30, multiple="layer",
              alpha=0.55, ax=axes[1])
 axes[1].set_title("Age distribution by survival")
 
-fig.suptitle("Figure 3 - Age", y=1.04)
+fig.suptitle("Figure 3: Age", y=1.04)
 plt.show()
 
 age_table = df.groupby("Title")["Age"].agg(["median", "mean", "count"]).round(1)
@@ -387,18 +390,18 @@ print(f"survival rate, everyone : {base_rate:.3f}")
 md("""
 **Finding.** The median age per title ranges from about **3 for `Master`** (the title used for
 boys) to about **30 for `Mr`** and higher for `Rare` (which collects `Dr`, `Rev`, `Col`,
-`Lady`...). The global median sits near 28.5 — the red dashed line — which is a plausible age
-for exactly one of those groups. The right panel shows why this matters: young children
-survived at a visibly higher rate than the base rate.
+`Lady`...). The global median, the red dashed line near 28.5, is a plausible age for only one
+of those groups. The right panel shows why this matters: young children survived at a
+visibly higher rate than the base rate.
 
-**Decision.** Impute `Age` with the **median for the passenger's `Title`**, falling back to the
-global median for titles unseen during fitting. Filling with 28.5 globally would hand an adult
-age to every boy with an unrecorded age and quietly erase the "children first" signal — the
+**Decision.** Impute `Age` with the median for the passenger's `Title`, falling back to the
+global median for titles unseen during fitting. Filling with 28.5 everywhere would give an
+adult age to every boy whose age is missing and weaken the "children first" signal, the
 second strongest effect in the data after sex.
 
-*Alternative considered:* a regression imputer using the other columns. Rejected — it adds a
-second model to serialise, a second thing to explain, and another surface for leakage, in
-exchange for very little on 712 rows.
+Alternative considered: a regression imputer using the other columns. Rejected. It adds a
+second model to serialise and explain, and another place for leakage to creep in, for very
+little gain on 712 rows.
 
 `Title` itself is kept as a model feature too: it compresses sex × age × social status into
 five levels, and anything outside the four common titles collapses to `Rare`, so an unseen
@@ -423,16 +426,16 @@ code("""
 fig, axes = plt.subplots(1, 3, figsize=(13, 3.5))
 
 sns.histplot(df["Fare"], bins=40, ax=axes[0], color="#4c72b0")
-axes[0].set_title(f"Fare (raw) - skew = {df['Fare'].skew():.2f}")
+axes[0].set_title(f"Fare (raw), skew = {df['Fare'].skew():.2f}")
 
 sns.histplot(df["LogFare"], bins=40, ax=axes[1], color="#55a868")
-axes[1].set_title(f"log1p(Fare) - skew = {df['LogFare'].skew():.2f}")
+axes[1].set_title(f"log1p(Fare), skew = {df['LogFare'].skew():.2f}")
 
 sns.boxplot(data=df, x="Pclass", y="LogFare", hue=TARGET_COLUMN, ax=axes[2])
 axes[2].set_title("log1p(Fare) by class and survival")
 axes[2].legend(title="Survived", fontsize=8)
 
-fig.suptitle("Figure 4 - Fare", y=1.04)
+fig.suptitle("Figure 4: Fare", y=1.04)
 plt.show()
 
 print(df["Fare"].describe().round(2).to_string())
@@ -441,19 +444,19 @@ print(f"max / median ratio : {df['Fare'].max() / df['Fare'].median():.1f}x")
 """)
 
 md("""
-**Finding.** Raw `Fare` has a long right tail — the most expensive ticket is roughly 35× the
-median — so a handful of first-class fares would dominate a linear coefficient. `log1p`
-compresses the skew substantially. There are also **fares of exactly 0** in the data, which is
-precisely why `log1p` is used rather than `log`. The third panel shows fare still separates
-survivors *within* each class, so it is not merely a proxy for `Pclass`.
+**Finding.** Raw `Fare` has a long right tail (the most expensive ticket is roughly 35× the
+median), so a handful of first-class fares would dominate a linear coefficient. `log1p`
+reduces the skew considerably. There are also fares of exactly 0 in the data, which is why
+`log1p` is used rather than `log`. The third panel shows fare still separates survivors
+within each class, so it is not just a proxy for `Pclass`.
 
 **Decision.**
 - Model `log1p(Fare)`, not `Fare`.
-- **Keep the outliers.** They are real tickets bought by real passengers, not measurement
-  errors, and the log transform already limits their leverage. Removing them would be fitting
-  the data to the model.
-- Impute missing fares with the **training-split median**, then recompute `LogFare` from the
-  imputed value — never impute the log column directly, because
+- Keep the outliers. They are real tickets bought by real passengers, not measurement
+  errors, and the log transform already limits their influence. Removing them would be
+  fitting the data to the model.
+- Impute missing fares with the training-split median, then recompute `LogFare` from the
+  imputed value. The log column is not imputed directly, because
   `log1p(median(fare)) != median(log1p(fare))`.
 """)
 
@@ -490,23 +493,23 @@ axes[1].axhline(base_rate, color="grey", ls="--", lw=1)
 axes[1].set_xlabel("")
 axes[1].set_title("Travelling alone")
 
-fig.suptitle("Figure 5 - Family size (dashed line = 38% base rate)", y=1.04)
+fig.suptitle("Figure 5: Family size (dashed line = 38% base rate)", y=1.04)
 plt.show()
 
 display(family_stats.round(3))
 """)
 
 md("""
-**Finding.** Survival peaks for families of **2 to 4** and collapses at both ends: solo
-travellers did poorly, and so did very large families (though the counts there are small — note
-the `n=` labels, several groups have under 10 passengers, so those bars are noisy).
+**Finding.** Survival peaks for families of 2 to 4 and drops at both ends: solo travellers
+did poorly, and so did very large families. The counts at the large end are small, though;
+the `n=` labels show several groups with under 10 passengers, so those bars are noisy.
 
 **Decision.**
-- Use **`FamilySize` = SibSp + Parch + 1**, and drop `SibSp`/`Parch` as separate features. The
+- Use `FamilySize` = SibSp + Parch + 1, and drop `SibSp`/`Parch` as separate features. The
   pattern is a function of the total, and keeping all three only adds collinearity for the
   linear model.
-- Keep **`IsAlone`** as an explicit binary even though it is derivable from `FamilySize`. The
-  drop at exactly size 1 is a *step*, and a linear model cannot represent a step from a single
+- Keep `IsAlone` as an explicit binary even though it can be derived from `FamilySize`. The
+  drop at exactly size 1 is a step, and a linear model cannot represent a step from a single
   continuous input.
 """)
 
@@ -536,7 +539,7 @@ fig, ax = plt.subplots(figsize=(7.5, 6))
 mask = np.triu(np.ones_like(corr, dtype=bool))
 sns.heatmap(corr, mask=mask, annot=True, fmt=".2f", cmap="RdBu_r", center=0,
             vmin=-1, vmax=1, cbar_kws={"shrink": 0.8}, annot_kws={"size": 7}, ax=ax)
-ax.set_title("Figure 6 - Correlation (training split)")
+ax.set_title("Figure 6: Correlation (training split)")
 plt.show()
 
 print("Correlation with Survived, strongest first:")
@@ -545,19 +548,19 @@ print(corr[TARGET_COLUMN].drop(TARGET_COLUMN).abs().sort_values(ascending=False)
 
 md("""
 **Finding.** `Sex` dominates every numeric correlation. `FamilySize` is, by construction,
-strongly correlated with both `SibSp` and `Parch` — confirming they are redundant once the
-total exists. `LogFare` and `Pclass` are strongly related but not interchangeable, consistent
+strongly correlated with both `SibSp` and `Parch`, which confirms they are redundant once
+the total exists. `LogFare` and `Pclass` are strongly related but not interchangeable, consistent
 with the within-class fare spread seen in Figure 4.
 
-**Decision.** Final feature set, which is exactly what
+**Decision.** The final feature set matches what
 `titanic.preprocessing.DEFAULT_NUMERIC_COLS` and `DEFAULT_CATEGORICAL_COLS` declare:
 
-- **numeric (standardised):** `Age`, `LogFare`, `FamilySize`
-- **categorical (indexed, `<UNK>` = 0):** `Pclass`, `Sex`, `Embarked`, `Title`, `Deck`, `IsAlone`
+- numeric (standardised): `Age`, `LogFare`, `FamilySize`
+- categorical (indexed, `<UNK>` = 0): `Pclass`, `Sex`, `Embarked`, `Title`, `Deck`, `IsAlone`
 
-Note that correlation only measures *linear* association, so a low value here is not evidence
-that a feature is useless to a tree or a neural network — it is used as a redundancy check, not
-as feature selection.
+Correlation only measures linear association, so a low value here does not mean a feature is
+useless to a tree or a neural network. The heatmap is used as a redundancy check, not for
+feature selection.
 """)
 
 # ===========================================================================
@@ -567,13 +570,13 @@ as feature selection.
 md("""
 ---
 
-## 10. A classical sanity check — what score should we expect?
+## 10. A classical sanity check: what score should we expect?
 
-**Question.** Before writing any PyTorch, what is a *reasonable* score on this data? Without
-this number, we cannot tell a working neural network from a broken one.
+**Question.** Before writing any PyTorch, what is a reasonable score on this data? Without
+that reference, it is hard to tell a working neural network from a broken one.
 
-**Analysis.** 5-fold stratified cross-validation **inside the training split**, using the real
-`Preprocessor` refitted within every fold — so this estimate is itself leak-free.
+**Analysis.** 5-fold stratified cross-validation inside the training split, using the real
+`Preprocessor` refitted within every fold, so this estimate is itself leak-free.
 *(Figure 7 of 7.)*
 """)
 
@@ -603,8 +606,8 @@ for fold_train_idx, fold_val_idx in folds.split(df, y):
 
     # Refit the preprocessor inside every fold. Fitting it once outside the
     # loop would leak each fold's validation rows into the imputation and
-    # scaling statistics - a small effect here, but the exact mistake this
-    # project is built to avoid.
+    # scaling statistics. The effect is small here, but it is the mistake
+    # this project is set up to avoid.
     pre = Preprocessor().fit(fold_train)
     xtr = np.hstack(pre.transform(fold_train))
     xva = np.hstack(pre.transform(fold_val))
@@ -636,14 +639,14 @@ auc_frame = pd.DataFrame({name: scores["auc"] for name, scores in results.items(
 sns.boxplot(data=auc_frame, ax=axes[0])
 sns.stripplot(data=auc_frame, color="black", size=5, ax=axes[0])
 axes[0].set_ylabel("ROC-AUC")
-axes[0].set_title("Figure 7a - 5-fold CV, ROC-AUC per fold")
+axes[0].set_title("Figure 7a: 5-fold CV, ROC-AUC per fold")
 
 for name, scores in results.items():
     axes[1].plot(range(1, 6), scores["auc"], marker="o", label=name)
 axes[1].set_xlabel("fold")
 axes[1].set_ylabel("ROC-AUC")
 axes[1].set_xticks(range(1, 6))
-axes[1].set_title("Figure 7b - fold-to-fold variation")
+axes[1].set_title("Figure 7b: fold-to-fold variation")
 axes[1].legend(fontsize=8)
 
 plt.show()
@@ -651,25 +654,26 @@ plt.show()
 spread = auc_frame.max().max() - auc_frame.min().min()
 print(f"fold-to-fold ROC-AUC spread across everything: {spread:.3f}")
 print("\\nExpectation band for Phase 3: a correctly implemented model should land near")
-print(f"ROC-AUC {auc_frame.mean().min():.2f}-{auc_frame.mean().max():.2f} on the held-out split.")
+band = f"{auc_frame.mean().min():.2f}-{auc_frame.mean().max():.2f}"
+print(f"ROC-AUC {band} on the held-out split.")
 """)
 
 md("""
-**Finding.** Both classical models land in the same region, and — the more important
-observation — the **fold-to-fold spread is larger than the gap between the two models**. On
-712 rows, a difference of one or two AUC points between two reasonable models is not
-distinguishable from sampling noise.
+**Finding.** Both classical models land in the same region. More importantly, the
+fold-to-fold spread is larger than the gap between the two models. On 712 rows, a difference
+of one or two AUC points between two reasonable models cannot be told apart from sampling
+noise.
 
 **Decision.** Two consequences for the rest of the project:
 
-1. **An expectation band.** Any PyTorch model that scores far below this band has a bug, not a
-   modelling problem. Any model that scores far *above* it has leaked. This number is the
-   sanity check Phase 3 is measured against.
-2. **A tiny hyperparameter grid.** Since the CV standard deviation exceeds most between-config
-   differences, a large search would mostly be fitting noise. The `deep` model gets an
-   8-point grid (hidden size × dropout × weight decay) and `gbdt` a 4-point grid — no more.
-   Everything is selected by cross-validation **inside** the training split; the held-out set
-   is never used to choose anything.
+1. An expectation band. A PyTorch model that scores far below this band most likely has a bug
+   rather than a modelling problem, and one that scores far above it has probably leaked.
+   Phase 3 is checked against this range.
+2. A small hyperparameter grid. Since the CV standard deviation exceeds most differences
+   between configurations, a large search would mostly fit noise. The `deep` model gets an
+   8-point grid (hidden size × dropout × weight decay) and `gbdt` a 4-point grid.
+   Everything is selected by cross-validation inside the training split; the held-out set is
+   never used to choose anything.
 """)
 
 # ===========================================================================
@@ -681,35 +685,35 @@ md("""
 
 ## 11. Conclusions
 
-**Final feature set** — implemented in `titanic.features` and `titanic.preprocessing`:
+**Final feature set**, implemented in `titanic.features` and `titanic.preprocessing`:
 
 | kind | features | treatment |
 |---|---|---|
 | numeric | `Age`, `LogFare`, `FamilySize` | standardised with training-split mean/std |
 | categorical | `Pclass`, `Sex`, `Embarked`, `Title`, `Deck`, `IsAlone` | indexed, `<UNK>` = 0 |
 
-**Imputation, all fitted on the training split and serialised to JSON:** `Age` → median per
-`Title` (global median as fallback); `Fare` → training median, with `LogFare` recomputed
-afterwards; `Embarked` → mode; `Cabin` → `Deck`, missing becomes the level `U`.
+**Imputation** (all fitted on the training split and saved as JSON): `Age` uses the median
+per `Title`, with the global median as fallback; `Fare` uses the training median, with
+`LogFare` recomputed afterwards; `Embarked` uses the mode; `Cabin` becomes `Deck`, and a
+missing cabin becomes the level `U`.
 
-**Deliberately excluded:** `SibSp`/`Parch` (redundant once `FamilySize` exists),
-`TicketGroupSize` and `FarePerPerson` (batch-dependent — train/serve skew plus cross-row label
-leakage), `AgeBin` (any model can learn the threshold from `Age`).
+**Excluded on purpose:** `SibSp`/`Parch` (redundant once `FamilySize` exists),
+`TicketGroupSize` and `FarePerPerson` (batch-dependent, which causes train/serve skew and
+cross-row label leakage), `AgeBin` (any model can learn the threshold from `Age`).
 
 **What this dataset is like, and what to expect.**
 
-- It is **small** (712 training rows) and **low-dimensional** (9 features). The dominant signal
-  is low-order: sex, then class, then age, then family size.
-- Consequently, **a neural network is not expected to win here.** Gradient-boosted trees model
-  thresholds and interactions natively and need far less data to find them; an MLP has to learn
-  the same structure from scratch on 712 examples. The linear model may well land inside the
-  MLP's confidence interval.
-- That outcome is not a failure of the assignment — it is the finding. The project therefore
-  reports **every model with bootstrap confidence intervals** and states plainly whether the
-  models are distinguishable at all, rather than declaring a winner on a difference smaller
-  than the noise.
+- It is small (712 training rows) and low-dimensional (9 features). Most of the signal is
+  low-order: sex, then class, then age, then family size.
+- So a neural network is not expected to win here. Gradient-boosted trees handle thresholds
+  and interactions natively and need less data to find them; an MLP has to learn the same
+  structure from scratch on 712 examples. The linear model may well land inside the MLP's
+  confidence interval.
+- If that happens, it is a result worth reporting, not a problem to fix. The project reports
+  every model with bootstrap confidence intervals and says whether the models can be told
+  apart at all, instead of declaring a winner on a difference smaller than the noise.
 
-**Metrics.** Accuracy alone is inadequate at a 38% base rate. The project reports accuracy,
+**Metrics.** Accuracy alone is not enough at a 38% base rate. The project reports accuracy,
 precision, recall, F1, ROC-AUC, PR-AUC and Brier score, each with a 95% bootstrap CI, plus a
 confusion matrix and a threshold sweep.
 

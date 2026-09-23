@@ -9,7 +9,7 @@ Three architectures of deliberately increasing capacity, all consuming the
 Returning raw logits rather than probabilities is intentional: it lets the
 training loop use :class:`torch.nn.BCEWithLogitsLoss`, which folds the sigmoid
 into the loss in a numerically stable way. Callers that want probabilities
-apply ``torch.sigmoid`` themselves -- exactly once, at inference.
+apply ``torch.sigmoid`` themselves, exactly once, at inference.
 
 Why a ladder rather than one model: on 712 rows the interesting question is
 not which architecture wins but whether they are *distinguishable at all*.
@@ -69,7 +69,7 @@ class TitanicLinear(nn.Module):
 
     Categorical columns are one-hot encoded and concatenated with the
     standardised numerics, then passed through a single ``Linear(in, 1)``.
-    That *is* logistic regression -- but trained with the same loop, loss,
+    That is logistic regression, but trained with the same loop, loss,
     optimiser, batching and seed as the larger models, so any performance gap
     is attributable to architecture rather than to a different training recipe.
     A scikit-learn ``LogisticRegression`` would not give that guarantee.
@@ -125,7 +125,7 @@ class TitanicMLP(nn.Module):
     categorical column, concatenated with the numerics, then two hidden layers
     with ReLU and dropout, then a single output unit.
 
-    It is deliberately small -- roughly 3-4k parameters, about five per
+    It is small: roughly 3-4k parameters, about five per
     training row. Anything larger overfits faster without adding capacity that
     712 examples can actually support. Dropout, weight decay and early stopping
     are the three cheap regularisers that matter at this scale.
@@ -192,9 +192,9 @@ class TitanicMLP(nn.Module):
 class TitanicAttention(nn.Module):
     """A miniature FT-Transformer: self-attention over feature tokens.
 
-    Every feature becomes a token in a shared ``d``-dimensional space --
-    categorical columns through an embedding table, numeric columns through a
-    learned ``value x vector + bias`` projection -- a learned ``[CLS]`` token is
+    Every feature becomes a token in a shared ``d``-dimensional space
+    (categorical columns through an embedding table, numeric columns through a
+    learned ``value x vector + bias`` projection). A learned ``[CLS]`` token is
     prepended, and a transformer encoder lets features attend to one another.
     The ``[CLS]`` representation is then read out through a linear head.
 

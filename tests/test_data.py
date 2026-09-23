@@ -123,7 +123,7 @@ class TestStratifiedSplit:
         # Stratification cannot do better than whole rows: with 20 validation
         # rows and 38 positives, the ideal 7.6 positives must round to 8, which
         # is already a 0.02 deviation. So the tolerance is half a row in each
-        # half -- anything larger means stratification genuinely failed.
+        # half. Anything larger means stratification failed.
         for split in (train_df, val_df):
             tolerance = 0.5 / len(split)
             assert abs(split["Survived"].mean() - base_rate) <= tolerance

@@ -1,7 +1,7 @@
 """Feature engineering: pure functions from a raw dataframe to an enriched one.
 
 Everything here is a pure function. No state is fitted, nothing is imputed,
-scaled or encoded -- that is :mod:`titanic.preprocessing`'s job, because those
+scaled or encoded. That is :mod:`titanic.preprocessing`'s job, because those
 operations must *learn* from the training split and therefore cannot live in a
 stateless helper.
 
@@ -68,7 +68,7 @@ def extract_title(names: pd.Series) -> pd.Series:
 
     Returns:
         A series of ``{"Mr", "Mrs", "Miss", "Master", "Rare"}``, aligned to the
-        input index. Never contains missing values -- an unparseable name
+        input index. Never contains missing values: an unparseable name
         yields ``"Rare"`` rather than raising, because inference on messy user
         data must degrade rather than crash.
     """
@@ -97,8 +97,8 @@ def family_size(df: pd.DataFrame) -> pd.Series:
     """Total family members aboard, including the passenger themselves.
 
     ``SibSp`` (siblings and spouses) plus ``Parch`` (parents and children) plus
-    one. Survival is non-monotonic in this value -- families of 2 to 4 fared
-    best, while solo travellers and very large families fared worst -- which is
+    one. Survival is non-monotonic in this value (families of 2 to 4 fared
+    best, while solo travellers and very large families fared worst), which is
     why the raw counts are dropped in favour of the total.
 
     Args:
@@ -181,7 +181,7 @@ def engineer(df: pd.DataFrame) -> pd.DataFrame:
 
     Returns:
         A new dataframe with :data:`ENGINEERED_COLUMNS` added. The input is
-        never mutated -- callers routinely reuse the raw frame for display.
+        never mutated, because callers reuse the raw frame for display.
     """
     out = df.copy()
 

@@ -1,8 +1,8 @@
 """End-to-end smoke tests for train.py and the artifact contract.
 
 These run the real CLI on the committed 100-row sample with tiny settings, so
-the whole pipeline -- load, split, engineer, fit, train, evaluate, save, load
-back -- is exercised in a couple of seconds. They are the tests that would
+the whole pipeline (load, split, engineer, fit, train, evaluate, save, load
+back) is exercised in a couple of seconds. They are the tests that would
 catch "the training script no longer runs", which no unit test can.
 """
 

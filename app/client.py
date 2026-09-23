@@ -3,16 +3,16 @@
 The Streamlit app never touches a model, a bundle or an HTTP client directly.
 It holds a :class:`Predictor`, which is either:
 
-* :class:`LocalPredictor` -- wraps :class:`titanic.service.InferenceService`
+* :class:`LocalPredictor` wraps :class:`titanic.service.InferenceService`
   in-process. This is the default and needs no server, which is what the
   assignment requires ("load the trained model from disk").
-* :class:`ApiPredictor` -- wraps ``httpx`` calls to a running FastAPI server.
+* :class:`ApiPredictor` wraps ``httpx`` calls to a running FastAPI server.
   Selected by setting ``TITANIC_API_URL``.
 
 Both return the same dataclasses, so every tab is written once. If the API
 becomes unreachable, :func:`build_predictor` falls back to local mode with a
-visible warning rather than leaving the app broken -- the API is a bonus layer,
-never a dependency.
+visible warning rather than leaving the app broken. The API is an optional
+layer, never a dependency.
 """
 
 from __future__ import annotations
@@ -292,8 +292,8 @@ def build_predictor(
 
     Returns:
         ``(predictor, warning)``. ``warning`` is ``None`` on success, or a
-        message explaining why the app fell back to local mode -- which the
-        sidebar displays so the user is never silently in the wrong mode.
+        message explaining why the app fell back to local mode. The sidebar
+        shows it, so the user always knows which mode is active.
     """
     if not api_url:
         return LocalPredictor(artifacts_dir), None

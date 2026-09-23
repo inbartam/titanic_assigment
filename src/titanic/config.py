@@ -1,7 +1,7 @@
 """Typed configuration objects and project-wide constants.
 
 Every path in the project flows through :class:`Paths`. Nothing anywhere else
-is allowed to hardcode an absolute path -- that is what makes the repository
+is allowed to hardcode an absolute path. That is what makes the repository
 work identically on the author's Windows machine and a reviewer's laptop.
 """
 
@@ -141,7 +141,7 @@ class TrainConfig:
         weight_decay: L2 regularisation. One of the three cheap regularisers
             (with dropout and early stopping) that matter at n=712.
         batch_size: 64 gives ~11 optimisation steps per epoch on the training
-            split -- enough gradient noise to regularise, few enough to be fast.
+            split: enough gradient noise to regularise, few enough to be fast.
         max_epochs: Upper bound; early stopping almost always triggers first.
         patience: Epochs without inner-validation improvement before stopping.
         seed: Seed for weight initialisation and DataLoader shuffling.

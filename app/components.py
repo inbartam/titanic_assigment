@@ -44,8 +44,8 @@ MODEL_DESCRIPTIONS: dict[str, str] = {
 def error_boundary(context: str) -> Iterator[None]:
     """Render any exception as a readable message instead of a red traceback.
 
-    Streamlit's default is a full traceback in the page, which is unusable for
-    anyone who is not the author. This shows the actionable message and tucks
+    Streamlit's default is a full traceback in the page, which is hard to read
+    for anyone who did not write the code. This shows the actionable message and tucks
     the traceback into an expander for whoever wants it.
 
     Args:
@@ -76,8 +76,8 @@ def metric_tile(
 
     st.metric(label, f"{value:.3f}", help=help_text)
     if interval:
-        # The interval is the point of reporting it: a caption keeps it next to
-        # the number rather than in a separate table nobody reads.
+        # A caption keeps the interval next to the number instead of in a
+        # separate table.
         st.caption(f"95% CI [{interval[0]:.3f}, {interval[1]:.3f}]")
 
 
@@ -173,7 +173,7 @@ def model_selector(models: dict[str, dict[str, Any]], default: str | None) -> st
 
     def describe(name: str) -> str:
         """Build the radio label for one model."""
-        return f"{name} — {MODEL_DESCRIPTIONS.get(name, 'model')}"
+        return f"{name}: {MODEL_DESCRIPTIONS.get(name, 'model')}"
 
     selected = st.radio("Model", names, index=index, format_func=describe)
 
@@ -217,7 +217,7 @@ def mode_badge(mode: str, warning: str | None) -> None:
     if mode.startswith("API"):
         st.info(f"Mode: {mode}", icon="🌐")
     else:
-        st.caption(f"Mode: {mode} — no server required.")
+        st.caption(f"Mode: {mode}. No server required.")
 
 
 def comparison_table(metrics_by_model: dict[str, dict[str, Any]], selected: str) -> pd.DataFrame:
@@ -284,8 +284,8 @@ def honest_verdict(metrics_by_model: dict[str, dict[str, Any]]) -> str:
     best_auc = best["validation"]["roc_auc"]
     best_ci = best.get("validation_ci95", {}).get("roc_auc")
 
-    # "Indistinguishable" means inside the leader's interval -- the only
-    # defensible reading of a 0.01 gap at n=179.
+    # "Indistinguishable" means inside the leader's interval. At n=179 that is
+    # the only defensible reading of a 0.01 gap.
     overlapping = [
         name
         for name, payload in ranked[1:]
@@ -305,7 +305,7 @@ def honest_verdict(metrics_by_model: dict[str, dict[str, Any]]) -> str:
         text += (
             f"But {', '.join(f'`{n}`' for n in overlapping)} "
             f"{'fall' if len(overlapping) > 1 else 'falls'} inside that interval, so on this "
-            "data the models are **not statistically distinguishable**. "
+            "data the models are not statistically distinguishable. "
         )
     else:
         text += "No other model falls inside that interval. "
@@ -317,8 +317,8 @@ def honest_verdict(metrics_by_model: dict[str, dict[str, Any]]) -> str:
 
     if simplest[0] != best_name and best_ci and simplest[1]["validation"]["roc_auc"] >= best_ci[0]:
         text += (
-            f"Since it is inside the leader's confidence interval, **`{simplest[0]}` is the "
-            "one to ship**: equal measured performance, far less to train, serve and explain."
+            f"Since it is inside the leader's confidence interval, `{simplest[0]}` is the "
+            "one to ship: the same measured performance, and less to train, serve and explain."
         )
     else:
         text += f"On these numbers `{best_name}` is the one to ship."
@@ -354,8 +354,8 @@ def ops_dashboard(stats: dict[str, Any]) -> None:
     if per_stage:
         st.plotly_chart(plots.stage_latency_fig(per_stage), use_container_width=True)
         st.caption(
-            "Splitting the stages is the point: 'the model is slow' and 'preprocessing is "
-            "slow' have completely different fixes."
+            "Timing each stage separately matters because 'the model is slow' and "
+            "'preprocessing is slow' have different fixes."
         )
 
     st.subheader("Queue and back-pressure")
@@ -367,9 +367,9 @@ def ops_dashboard(stats: dict[str, Any]) -> None:
     columns[3].metric("Rejected (503)", sum(rejections.values()) if rejections else 0)
     st.caption(
         f"Bounded at max_concurrency={queue.get('max_concurrency', '?')}, "
-        f"max_queue={queue.get('max_queue', '?')}. **Queue depth counts requests that are "
-        "waiting, not executing** — in-flight saturates the moment the service is busy and "
-        "stops being informative, which is why autoscalers watch depth instead."
+        f"max_queue={queue.get('max_queue', '?')}. Queue depth counts requests that are "
+        "waiting, not executing. In-flight saturates as soon as the service is busy and "
+        "then stops being informative, which is why autoscalers watch depth instead."
     )
 
     predictions = stats.get("predictions", {})
@@ -386,8 +386,8 @@ def ops_dashboard(stats: dict[str, Any]) -> None:
                 delta_color="off",
             )
         st.caption(
-            "The cheapest drift signal there is: if the served positive rate wanders far from "
-            "the training base rate, the input distribution has probably changed."
+            "A cheap drift signal: if the served positive rate moves far from the training "
+            "base rate, the input distribution has probably changed."
         )
 
     models = stats.get("models", {})

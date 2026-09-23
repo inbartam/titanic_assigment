@@ -1,8 +1,8 @@
 """Tests for the PyTorch model ladder.
 
 Three architectures share one interface: ``forward(x_num, x_cat) -> logits``
-of shape ``(B,)``. Everything downstream -- the training loop, the artifact
-format, the inference service -- depends on that being true for all of them,
+of shape ``(B,)``. Everything downstream (the training loop, the artifact
+format, the inference service) depends on that being true for all of them,
 so these tests check the contract rather than the internals.
 """
 
@@ -20,7 +20,7 @@ from titanic.models import (
 )
 
 # Cardinalities of the real fitted preprocessor: Pclass, Sex, Embarked, Title,
-# Deck, IsAlone -- each including the reserved <UNK> slot at index 0.
+# Deck, IsAlone, each including the reserved <UNK> slot at index 0.
 CARDINALITIES = [4, 3, 4, 6, 10, 3]
 N_NUMERIC = 3
 BATCH = 7

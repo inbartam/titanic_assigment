@@ -4,12 +4,12 @@ Streamlit re-executes the entire script on every interaction, so anything
 expensive must be cached or the app would reload four PyTorch models each time
 a slider moves.
 
-Two cache decorators, used deliberately:
+Two cache decorators are used:
 
-* ``@st.cache_resource`` for objects that must be shared and not copied -- the
+* ``@st.cache_resource`` for objects that must be shared and not copied. The
   predictor holds loaded models, a semaphore and a metrics registry, and
   copying it would fork the metrics.
-* ``@st.cache_data`` for values that are safe to copy -- dataframes and
+* ``@st.cache_data`` for values that are safe to copy: dataframes and
   prediction results, keyed by content.
 """
 

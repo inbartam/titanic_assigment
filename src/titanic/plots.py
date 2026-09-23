@@ -56,7 +56,7 @@ def model_color(name: str) -> str:
 def _empty_figure(message: str) -> go.Figure:
     """Build a placeholder figure carrying an explanation.
 
-    Used when a figure cannot be drawn -- typically a CSV with only one class,
+    Used when a figure cannot be drawn, typically a CSV with only one class,
     where ROC is undefined. Returning a labelled empty figure keeps the app
     layout stable instead of leaving a hole or raising.
 
@@ -393,7 +393,7 @@ def training_curves_fig(history: dict[str, Any], title: str = "Training curves")
     """Plot training and inner-validation loss per epoch.
 
     The inner-validation series is the 10% carve-out from inside the training
-    split -- never the held-out validation set.
+    split, never the held-out validation set.
 
     Args:
         history: ``history.json`` contents.

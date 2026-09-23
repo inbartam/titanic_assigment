@@ -1,23 +1,23 @@
-# PLAN.md — 10-Hour Execution Plan (Windows, local-only delivery)
+# PLAN.md: 10-Hour Execution Plan (Windows, local-only delivery)
 
-Total budget: **10 h** (realistically 10–11 with the API layer; the buffer absorbs it). Phases
-are ordered so that a runnable, submittable project exists from hour ~5.5 onward. If you fall
-behind, cut from the **"Cut first"** list at the bottom, never from Phases 0–4.
+Total budget: **10 h** (realistically 10 to 11 with the API layer, which the buffer absorbs).
+Phases are ordered so that a runnable, submittable project exists from about hour 5.5 onward. If
+you fall behind, cut from the "Cut first" list at the bottom, never from Phases 0 to 4.
 
-**Scope decision:** the instrumented API (Phase 5a) is in; `attn` is out unless Phase 5b ends
-ahead of schedule. Reason: an instrumented service differentiates more than a fourth model.
+**Scope decision:** the instrumented API (Phase 5a) is in, and `attn` is out unless Phase 5b ends
+ahead of schedule. An instrumented service sets the project apart more than a fourth model would.
 
 Legend: ⏱ time box · ✅ done-when · 💾 commit message
 
 ---
 
-## Phase 0 — Environment, Kaggle, scaffold (⏱ 0:00–1:00)
+## Phase 0: Environment, Kaggle, scaffold (⏱ 0:00-1:00)
 
 **Environment (Windows)**
 - Confirm `py -3.12 --version`. If missing, install Python 3.12 from python.org (add to PATH
-  unchecked is fine; the `py` launcher finds it). Do **not** build on 3.13/3.14.
+  unchecked is fine; the `py` launcher finds it). Do not build on 3.13/3.14.
 - `py -3.12 -m venv .venv` → `.\.venv\Scripts\Activate.ps1` → upgrade pip.
-- `requirements.txt` — pinned; line 1 `--extra-index-url https://download.pytorch.org/whl/cpu`;
+- `requirements.txt`: pinned; line 1 `--extra-index-url https://download.pytorch.org/whl/cpu`;
   then `torch`, `pandas`, `numpy`, `scikit-learn`, `joblib`, `plotly`, `streamlit`, `kaggle`,
   `fastapi`, `uvicorn[standard]`, `pydantic`, `pydantic-settings`, `prometheus-client`,
   `httpx`, `python-multipart`, `psutil`, `pytest`, `ruff`, `black`, `jupyter`,
@@ -47,11 +47,11 @@ Legend: ⏱ time box · ✅ done-when · 💾 commit message
 
 ---
 
-## Phase 1 — Features & Preprocessor (⏱ 1:00–2:15)
+## Phase 1: Features & Preprocessor (⏱ 1:00-2:15)
 
-- `features.py` — pure functions on the raw dataframe (`docs/ARCHITECTURE.md §3`):
+- `features.py`: pure functions on the raw dataframe (`docs/ARCHITECTURE.md §3`):
   `extract_title`, `family_size`, `is_alone`, `deck_from_cabin`, `log_fare`, `engineer(df)`.
-- `preprocessing.py` — `Preprocessor` with `fit(df_train)`, `transform(df) -> (X_num, X_cat)`,
+- `preprocessing.py`: `Preprocessor` with `fit(df_train)`, `transform(df) -> (X_num, X_cat)`,
   `to_dict()/from_dict()`, `save(path)/load(path)`. Learns: Title→median Age table (+ global
   fallback), Fare median, Embarked mode, numeric mean/std, category vocabularies with `<UNK>=0`.
 - `tests/test_features.py`, `tests/test_preprocessing.py`:
@@ -66,11 +66,11 @@ Legend: ⏱ time box · ✅ done-when · 💾 commit message
 
 ---
 
-## Phase 2 — EDA notebook (⏱ 2:15–3:30)
+## Phase 2: EDA notebook (⏱ 2:15-3:30)
 
-`notebooks/eda.ipynb`. Story-driven, **≤ 9 figures**, each in a
+`notebooks/eda.ipynb`. It should read as a story, with at most 9 figures, each in a
 *Question → Analysis → Finding → Decision* block. Import everything from `titanic.features`.
-Matplotlib/seaborn is fine here (static, renders on GitHub).
+Matplotlib/seaborn is fine here because the output is static and renders on GitHub.
 
 Required sections:
 1. Setup & loading (`data/train.csv`; state we only use train.csv).
@@ -82,10 +82,10 @@ Required sections:
 5. Survival vs `Sex`, `Pclass` and their interaction (one faceted figure).
 6. Age by Title (justifies imputation) + Age distribution by survival.
 7. Fare: skew → `log1p`; overlap across classes; outliers kept.
-8. FamilySize / IsAlone: non-monotonic survival (peak 2–4).
+8. FamilySize / IsAlone: non-monotonic survival (peaks at sizes 2 to 4).
 9. Engineered-feature correlation (SibSp/Parch redundant with FamilySize).
-10. **Classical sanity check**: 5-fold CV on the *training split only* for sklearn
-    LogisticRegression and HistGradientBoosting → expectation band (~0.83–0.87 AUC).
+10. Classical sanity check: 5-fold CV on the *training split only* for sklearn
+    LogisticRegression and HistGradientBoosting → expectation band (~0.83 to 0.87 AUC).
 11. Conclusions: exact feature list, expected difficulty, why NNs may not win here.
 
 ✅ *Kernel → Restart & Run All* succeeds; outputs saved; every figure has a Decision line.
@@ -93,15 +93,15 @@ Required sections:
 
 ---
 
-## Phase 3 — Models & training (⏱ 3:30–5:15)
+## Phase 3: Models & training (⏱ 3:30-5:15)
 
-Build in this order; each is independently shippable.
+Build in this order. Each step can ship on its own.
 
 1. `models.py`: `TitanicLinear`, `TitanicMLP`, `build_model(config, cardinalities)`,
    `count_parameters`. Both `forward(x_num, x_cat) -> logits (B,)`.
 2. `training.py`: `train_torch_model(...)` with `BCEWithLogitsLoss`, `AdamW`, `batch_size=64`,
    seeded `DataLoader` (`num_workers=0`), `EarlyStopping(patience, restore_best=True)` on an
-   **inner 10% carve-out of the training split**; `cross_validate(config, X, y, k=5)`.
+   inner 10% carve-out of the training split; `cross_validate(config, X, y, k=5)`.
    Returns `history`.
 3. `artifacts.py`: `save_bundle`, `load_bundle` (dispatches on `framework`), `update_registry`.
 4. `train.py` CLI (`--model {fast,deep,attn,gbdt,all}`, `--data-path`, `--seed`, `--epochs`,
@@ -110,8 +110,8 @@ Build in this order; each is independently shippable.
 5. `sklearn_models.py`: `gbdt` = `HistGradientBoostingClassifier(categorical_features=mask,
    random_state=seed)`; tiny CV grid (`max_depth ∈ {3, None}`, `learning_rate ∈ {0.05, 0.1}`);
    saved with `joblib`. Same `metrics.json` format.
-6. ~~`attn`~~ — **deferred to Phase 7** (only if ahead). Leave the `attn` branch in
-   `build_model` as `NotImplementedError` with a comment, or omit entirely; the CLI choice must
+6. ~~`attn`~~: deferred to Phase 7 (only if ahead). Leave the `attn` branch in
+   `build_model` as `NotImplementedError` with a comment, or omit it entirely. The CLI choice must
    not appear until the model exists.
 7. `tests/test_models.py` (forward shapes, param counts for all torch models),
    `tests/test_train_smoke.py` (`train.py --model fast --data-path data/sample_train.csv
@@ -121,44 +121,44 @@ Build in this order; each is independently shippable.
    that trained; `load_bundle` works for both frameworks.
 💾 `feat: linear/MLP PyTorch models, GBDT reference, train.py CLI`
 
-> **Checkpoint 1 (≈5:15):** submittable in minimal form. Push to GitHub.
+> **Checkpoint 1 (≈5:15):** the project is submittable in minimal form. Push to GitHub.
 
 ---
 
-## Phase 4 — Evaluation & plots (⏱ 5:15–5:55)
+## Phase 4: Evaluation & plots (⏱ 5:15-5:55)
 
 - `evaluation.py`: `compute_metrics(y_true, y_prob, threshold=0.5)` (accuracy, precision,
   recall, F1, ROC-AUC, PR-AUC, Brier, confusion matrix); `bootstrap_ci(..., n=1000, seed)`;
   `curve_data(y_true, y_prob)` → dict of ROC/PR/threshold-sweep/calibration arrays.
-  **No plotting here.**
+  No plotting happens in this module.
 - `plots.py` (Plotly): `confusion_matrix_fig`, `roc_fig(curves: dict[str, ...])` (overlay
   multiple models), `pr_fig`, `threshold_sweep_fig`, `calibration_fig`,
   `training_curves_fig(history)`, `prob_histogram_fig`. Consistent template/colors.
 - `train.py` saves each figure as `artifacts/<model>/plots/<name>.html`.
 
-✅ Same functions produce the HTML files and the app figures; zero duplicated plotting code.
+✅ The same functions produce the HTML files and the app figures, with no duplicated plotting code.
 💾 `feat: evaluation metrics with bootstrap CIs and shared Plotly figures`
 
 ---
 
-## Phase 5a — Service layer & API (⏱ 5:55–7:10)
+## Phase 5a: Service layer & API (⏱ 5:55-7:10)
 
-Spec: `docs/API.md`. Build bottom-up; the app in Phase 5b is a client of this.
+Spec: `docs/API.md`. Build bottom-up, since the app in Phase 5b is a client of this layer.
 
-1. `schemas.py` — Pydantic models; `PassengerIn` validators reuse `data.validate_schema` logic
+1. `schemas.py`: Pydantic models; `PassengerIn` validators reuse `data.validate_schema` logic
    (one source of truth for required/optional columns and value checks).
-2. `metrics.py` — `MetricsRegistry` with the Prometheus objects from API.md §4, a
+2. `metrics.py`: `MetricsRegistry` with the Prometheus objects from API.md §4, a
    `deque(maxlen=2000)` of per-request records, `record(...)`, `snapshot() -> dict`,
    `prometheus_text()`. Own `CollectorRegistry` (not the global one) so tests can create fresh ones.
-3. `service.py` — `InferenceService(artifacts_dir, max_concurrency=2, max_queue=64,
+3. `service.py`: `InferenceService(artifacts_dir, max_concurrency=2, max_queue=64,
    queue_timeout_s=5)`: loads all bundles from the registry (tolerates partial), `predict(df,
    model, threshold) -> PredictionResult`, `evaluate(df, model, threshold, n_boot)`,
    `stats()`, `reload()`. Queue accounting exactly as API.md §2; stage timers around
    preprocess / inference / postprocess; typed exceptions.
-4. `api/settings.py`, `api/main.py` — app factory, routes, exception handlers → JSON error
+4. `api/settings.py`, `api/main.py`: app factory, routes, exception handlers → JSON error
    shape, `X-Request-ID`, JSON access log line, CORS for localhost, `/metrics` via
    `generate_latest(registry)`.
-5. `scripts/load_test.py` — async httpx, `--n --concurrency --model --rows`, prints p50/p95/p99,
+5. `scripts/load_test.py`: async httpx, `--n --concurrency --model --rows`, prints p50/p95/p99,
    error count, peak `queue_depth` read from `/stats` during the run.
 6. `tests/test_service.py`, `tests/test_api.py` per API.md §8.
 
@@ -166,10 +166,10 @@ Spec: `docs/API.md`. Build bottom-up; the app in Phase 5b is a client of this.
    concurrency 16 shows `queue_depth` > 0 and zero 5xx; `/metrics` scrapes; all tests pass.
 💾 `feat: instrumented InferenceService with bounded queue, FastAPI endpoints, load test`
 
-## Phase 5b — Streamlit app (⏱ 7:10–8:30)
+## Phase 5b: Streamlit app (⏱ 7:10-8:30)
 
 Build to `docs/ARCHITECTURE.md §7`. The app talks only to `app/client.py`'s `Predictor`
-(`LocalPredictor` wraps `InferenceService`; `ApiPredictor` wraps httpx). Priorities in order:
+(`LocalPredictor` wraps `InferenceService`; `ApiPredictor` wraps httpx). Priorities, in order:
 1. Sidebar: model selector from the registry (only models that exist), data source
    (bundled sample / upload / path), threshold slider (default 0.5, caption), mode badge
    (Local / API @ url) with fallback-to-local warning.
@@ -183,7 +183,7 @@ Build to `docs/ARCHITECTURE.md §7`. The app talks only to `app/client.py`'s `Pr
    depth / in-flight, error rate, positive-rate drift vs 0.38; "Run load test" button in API mode.
 8. `.streamlit/config.toml` theme; no raw tracebacks (`try/except` → `st.error` + details expander).
 
-✅ App runs on the bundled sample with no Kaggle access and **no server**; on a CSV without
+✅ App runs on the bundled sample with no Kaggle access and no server; on a CSV without
 `Survived`; rejects a random CSV with a clear message; survives a registry with only `fast`
 trained; switches to API mode via env var and back when the API dies; Ops tab shows numbers in
 both modes; every tab renders in < 2 s after first load.
@@ -191,14 +191,14 @@ both modes; every tab renders in < 2 s after first load.
 
 ---
 
-## Phase 6 — README, screenshots, fresh-clone test (⏱ 8:30–9:30)
+## Phase 6: README, screenshots, fresh-clone test (⏱ 8:30-9:30)
 
 - Fill `README.md` from the template (results table from every `metrics.json`, 5 screenshots:
-  data validation, predictions, evaluation, compare, **Ops tab during the load test**), plus
+  data validation, predictions, evaluation, compare, and the Ops tab during the load test), plus
   the API section (run command, endpoint table, one `curl`/PowerShell `Invoke-RestMethod` example,
   load-test output).
 - **Fresh-clone test**: `git clone` into `%TEMP%\titanic-check`, open a *new* PowerShell,
-  follow README top to bottom (including the no-Kaggle path). Fix every gap.
+  follow README top to bottom (including the no-Kaggle path), and fix every gap you hit.
 - Final `ruff check .`, `black --check .`, `pytest -q`.
 
 ✅ README has Windows + Unix commands, Kaggle token steps, results with CIs, screenshots,
@@ -207,19 +207,19 @@ both modes; every tab renders in < 2 s after first load.
 
 ---
 
-## Phase 7 — `attn` (only if ≥ 45 min ahead) / buffer / final review (⏱ 9:30–10:00+)
+## Phase 7: `attn` (only if ≥ 45 min ahead) / buffer / final review (⏱ 9:30-10:00+)
 
 - If Phase 6 finished before 9:00: build `TitanicAttention` (ARCHITECTURE §5) in a 30-min hard
   box, retrain `--model attn`, add to README tables. Otherwise skip and keep README/DECISIONS
   consistent with three models.
 - Walk `CLAUDE.md §8` line by line. Re-read `docs/DECISIONS.md`; every entry must still be true.
-  Make the repo public. Submit.
+  Then make the repo public and submit.
 
 ---
 
 ## Cut first (in this order, if behind)
 
-1. **`attn` model** — already deferred; cutting it costs nothing.
+1. `attn` model. It is already deferred, so cutting it costs nothing.
 2. Ops tab "Run load test" button (keep the script + README output).
 3. `/admin/reload`, prediction-drift metrics (`positive_rate`, probability histogram).
 4. Calibration plot + Brier.

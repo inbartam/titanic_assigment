@@ -3,8 +3,8 @@
 Every function in ``titanic.features`` is pure: same input, same output, no
 fitted state, no dependence on other rows in the batch. These tests pin that
 contract down, because a feature that quietly depends on the rest of the batch
-would behave differently at training time and at single-row inference time --
-the train/serve skew that ``docs/DECISIONS.md`` explicitly rules out.
+would behave differently at training time and at single-row inference time.
+That is the train/serve skew that ``docs/DECISIONS.md`` rules out.
 """
 
 from __future__ import annotations

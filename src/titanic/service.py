@@ -1,7 +1,7 @@
 """The inference service: the only object that touches a model at serve time.
 
-Both adapters -- ``app/client.LocalPredictor`` for Streamlit and ``api/main.py``
-for FastAPI -- go through this class. That is deliberate: one inference code
+Both adapters (``app/client.LocalPredictor`` for Streamlit and ``api/main.py``
+for FastAPI) go through this class. One inference code
 path means the app and the API cannot drift, and the metrics describe
 *inference* rather than *HTTP*, so preprocessing time and model time are
 visible separately whether or not a server is running.

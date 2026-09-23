@@ -1,6 +1,6 @@
 """Streamlit entry point: inference and evaluation over the trained models.
 
-Deliberately thin. Every tab lives in ``app/tabs.py``, reusable widgets in
+Kept thin on purpose. Every tab lives in ``app/tabs.py``, reusable widgets in
 ``app/components.py``, caching in ``app/state.py``, and all inference behind
 ``app/client.py``'s ``Predictor``. This file only wires them together.
 
@@ -32,7 +32,7 @@ from app.state import (
 from titanic.config import Paths
 
 st.set_page_config(
-    page_title="Titanic Survival — Inference & Evaluation",
+    page_title="Titanic Survival: Inference & Evaluation",
     page_icon="🚢",
     layout="wide",
 )

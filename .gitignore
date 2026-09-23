@@ -1,5 +1,5 @@
 # ===========================================================================
-# SECRETS — never commit credentials
+# SECRETS: never commit credentials
 # ===========================================================================
 # Nothing in this project needs a secret at runtime: the app and the API read
 # trained artifacts from disk. Credentials are only used by `titanic.data`
@@ -56,7 +56,7 @@ client_secret*.json
 !*credential*.md
 
 # ===========================================================================
-# DATA — the full Kaggle dataset is fetched, not committed
+# DATA: the full Kaggle dataset is fetched, not committed
 # ===========================================================================
 # Only data/sample_train.csv (100 stratified rows) is version-controlled, so
 # the app and the smoke tests run immediately after a clone with no Kaggle

@@ -1,14 +1,14 @@
-# API.md — Inference Service & Observability
+# API.md: Inference Service & Observability
 
 Scope: an HTTP inference API (`api/main.py`, FastAPI + uvicorn) in front of the same artifacts the
-Streamlit app uses, instrumented with latency, usage, error and **queue-depth** metrics in
-Prometheus format plus a JSON `/stats` snapshot for the app's **Ops** tab.
+Streamlit app uses. It is instrumented with latency, usage, error and queue-depth metrics in
+Prometheus format, plus a JSON `/stats` snapshot for the app's Ops tab.
 
-Design rule: **the service layer owns the metrics, not the web framework.**
+Design rule: the service layer owns the metrics, not the web framework.
 `titanic.service.InferenceService` wraps loaded bundles, enforces a bounded concurrency queue and
-records every metric. FastAPI is a thin adapter; the Streamlit app in local mode calls the *same*
-service in-process. So the Ops tab works with or without a running server, and there is exactly
-one code path for inference.
+records every metric. FastAPI is a thin adapter, and the Streamlit app in local mode calls the
+same service in-process. As a result the Ops tab works with or without a running server, and
+there is exactly one code path for inference.
 
 ---
 
@@ -42,8 +42,8 @@ per-process, see §6).
 
 ## 2. Concurrency & queue model
 
-CPU inference on small batches is fast (<10 ms) but not free; uncontrolled concurrency on a
-2–4-core laptop causes latency collapse. So:
+CPU inference on small batches is fast (<10 ms) but not free, and uncontrolled concurrency on a
+2- to 4-core laptop makes latency collapse. The service therefore works like this:
 
 ```
 request ──► queue_depth += 1 ──► wait on Semaphore(MAX_CONCURRENCY) with QUEUE_TIMEOUT_S
@@ -55,23 +55,26 @@ request ──► queue_depth += 1 ──► wait on Semaphore(MAX_CONCURRENCY) 
 ```
 
 - `MAX_CONCURRENCY` (default 2): parallel inferences. Torch releases the GIL inside ops, so 2
-  gives real overlap on ≥4 cores; more mostly adds contention.
-- `MAX_QUEUE` (default 64): requests allowed to wait. Beyond that → `503 Service Unavailable`
-  with `Retry-After: 1` and body `{"error": "queue_full", "queue_depth": 64, "max_queue": 64}`.
-- `QUEUE_TIMEOUT_S` (default 5): a request that waits longer than this → `503 queue_timeout`.
-- Queue depth is measured as "requests that have arrived and are not yet executing" — the
+  gives real overlap on ≥4 cores; going higher mostly adds contention.
+- `MAX_QUEUE` (default 64): requests allowed to wait. Beyond that the service returns
+  `503 Service Unavailable` with `Retry-After: 1` and body
+  `{"error": "queue_full", "queue_depth": 64, "max_queue": 64}`.
+- `QUEUE_TIMEOUT_S` (default 5): a request that waits longer than this gets `503 queue_timeout`.
+- Queue depth is measured as "requests that have arrived and are not yet executing". That is the
   number a load balancer or autoscaler would act on.
-- In FastAPI, inference is dispatched with `run_in_threadpool` (`anyio` thread limiter set to
-  `MAX_CONCURRENCY + MAX_QUEUE` so the threadpool itself never becomes a hidden second queue).
-- Same `threading.Semaphore` is used by the in-process Streamlit path; with one user it simply
-  never blocks, but the metrics are still recorded identically.
+- In FastAPI, inference is dispatched with `run_in_threadpool`. The `anyio` thread limiter is set
+  to `MAX_CONCURRENCY + MAX_QUEUE` so the threadpool itself does not turn into a hidden second
+  queue.
+- The in-process Streamlit path uses the same `threading.Semaphore`. With one user it never
+  blocks, but the metrics are still recorded the same way.
 
 ---
 
 ## 3. Endpoints
 
-All responses JSON; errors use one shape: `{"error": "<code>", "message": "<actionable text>",
-"details": {...}}`. Never a stack trace to the client (logged server-side with a request id).
+All responses are JSON. Errors use one shape: `{"error": "<code>", "message": "<actionable text>",
+"details": {...}}`. Stack traces are not sent to the client; they are logged server-side with a
+request id.
 
 | method | path                 | purpose                                                                 |
 |--------|----------------------|-------------------------------------------------------------------------|
@@ -85,12 +88,13 @@ All responses JSON; errors use one shape: `{"error": "<code>", "message": "<acti
 | POST   | `/admin/reload`      | reload artifacts from disk (guarded by `TITANIC_ADMIN_TOKEN` header; disabled if unset) |
 
 `PassengerIn` mirrors the raw Kaggle schema (required: `Pclass, Name, Sex, Age, SibSp, Parch,
-Fare`; optional: `PassengerId, Cabin, Embarked, Ticket, Survived`), with the same validation as
-`data.validate_schema` so the API and the app reject the same inputs with the same messages.
-Request body limit: 10 000 rows (`413 payload_too_large` above).
+Fare`; optional: `PassengerId, Cabin, Embarked, Ticket, Survived`). It applies the same
+validation as `data.validate_schema`, so the API and the app reject the same inputs with the same
+messages. Request body limit: 10 000 rows (`413 payload_too_large` above).
 
-Validation errors → `422` with the list of offending fields; unknown model → `404 model_not_found`
-listing available models; artifacts missing → `503 no_artifacts` with the `train.py` command.
+Validation errors return `422` with the list of offending fields. An unknown model returns
+`404 model_not_found` and lists the available models. Missing artifacts return `503 no_artifacts`
+with the `train.py` command to run.
 
 ---
 
@@ -104,15 +108,15 @@ listing available models; artifacts missing → `503 no_artifacts` with the `tra
 | `titanic_rows_predicted_total`                | Counter   | `model`                    | usage in rows, not requests                          |
 | `titanic_batch_size`                          | Histogram | `model`                    | rows per request                                     |
 | `titanic_inflight_requests`                   | Gauge     | `model`                    | currently executing                                  |
-| `titanic_queue_depth`                         | Gauge     | —                          | waiting for a slot (the autoscaling signal)          |
+| `titanic_queue_depth`                         | Gauge     | (none)                     | waiting for a slot (the autoscaling signal)          |
 | `titanic_queue_rejections_total`              | Counter   | `reason ∈ {full, timeout}` | back-pressure events                                 |
 | `titanic_errors_total`                        | Counter   | `endpoint, error_code`     | `schema_error`, `model_not_found`, `internal`, …     |
-| `titanic_prediction_positive_rate`            | Gauge     | `model`                    | mean predicted class over the last window — cheap drift signal |
-| `titanic_prediction_probability`              | Histogram | `model`                    | distribution of `p_survived` (0.0–1.0, 10 buckets)   |
+| `titanic_prediction_positive_rate`            | Gauge     | `model`                    | mean predicted class over the last window; a cheap drift signal |
+| `titanic_prediction_probability`              | Histogram | `model`                    | distribution of `p_survived` (0.0 to 1.0, 10 buckets) |
 | `titanic_model_info`                          | Info      | `model, framework, n_params, trained_at, sklearn/torch version` | what is serving |
 | `titanic_model_load_duration_seconds`         | Gauge     | `model`                    | cold-start cost                                      |
-| `python_gc_*`                                 | default   | —                          | GC stats from `prometheus_client`                    |
-| `process_*`                                   | default   | —                          | CPU and RSS from `prometheus_client`. **Linux only** -- the collector reads `/proc` and emits nothing on Windows or macOS |
+| `python_gc_*`                                 | default   | (none)                     | GC stats from `prometheus_client`                    |
+| `process_*`                                   | default   | (none)                     | CPU and RSS from `prometheus_client`. Linux only: the collector reads `/proc` and emits nothing on Windows or macOS |
 
 Histogram buckets for latency: `(0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5)`.
 
@@ -120,10 +124,10 @@ Histogram buckets for latency: `(0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0
 
 ## 5. `/stats` snapshot (what the Ops tab renders)
 
-Computed from `MetricsRegistry`: counters read from the Prometheus objects; percentiles from a
-`collections.deque(maxlen=2000)` of `(ts, endpoint, model, total_ms, stage_ms…)` records, so
-p50/p95/p99 are exact over the recent window (Prometheus histograms only give bucketed
-estimates and the app should not need a Prometheus server).
+Computed from `MetricsRegistry`. Counters are read from the Prometheus objects. Percentiles come
+from a `collections.deque(maxlen=2000)` of `(ts, endpoint, model, total_ms, stage_ms…)` records,
+so p50/p95/p99 are exact over the recent window. Prometheus histograms only give bucketed
+estimates, and the app should not need a Prometheus server.
 
 ```json
 {
@@ -143,23 +147,24 @@ estimates and the app should not need a Prometheus server).
 }
 ```
 
-The Streamlit **Ops** tab (see ARCHITECTURE §7) shows: request/row counters, latency
-percentiles per stage (Plotly bar), a live queue-depth/inflight gauge pair, error rate, and the
-positive-rate drift line vs the training base rate (0.3838). Process RSS/CPU is deliberately not
-surfaced in `/stats`: it is available on the Prometheus endpoint on Linux, and duplicating it as
-JSON would have meant carrying `psutil` purely for one tile.
+The Streamlit Ops tab (see ARCHITECTURE §7) shows request/row counters, latency percentiles per
+stage (Plotly bar), a live queue-depth/inflight gauge pair, error rate, and the positive-rate
+drift line against the training base rate (0.3838). Process RSS/CPU is intentionally left out of
+`/stats`. It is available on the Prometheus endpoint on Linux, and duplicating it as JSON would
+have meant adding `psutil` for a single tile.
 
 ---
 
 ## 6. Operational notes (put in README)
 
-- Metrics are per-process. Run `uvicorn --workers 1` (default); for multi-worker you would add
-  `prometheus_client.multiprocess` — out of scope, listed as future work.
+- Metrics are per-process. Run `uvicorn --workers 1` (the default). Multi-worker support would
+  need `prometheus_client.multiprocess`, which is out of scope and listed as future work.
 - Structured logging: one JSON line per request (`request_id, endpoint, model, n_rows,
-  status, total_ms, queue_ms`), `X-Request-ID` echoed in responses.
-- CORS: allow `localhost` origins only (the Streamlit app). No auth on read endpoints; the
-  reload endpoint is token-guarded or disabled.
-- Graceful shutdown: on SIGTERM stop accepting, drain in-flight (≤ `QUEUE_TIMEOUT_S`).
+  status, total_ms, queue_ms`), with `X-Request-ID` echoed in responses.
+- CORS: only `localhost` origins are allowed (the Streamlit app). There is no auth on read
+  endpoints; the reload endpoint is token-guarded or disabled.
+- Graceful shutdown: on SIGTERM, stop accepting new requests and drain in-flight ones
+  (≤ `QUEUE_TIMEOUT_S`).
 - Windows: uvicorn runs fine natively; `--reload` uses watchfiles (in requirements).
 
 ---
@@ -171,9 +176,9 @@ JSON would have meant carrying `psutil` purely for one tile.
 | local (default) | `streamlit run ds_app.py`                | in-process `InferenceService`        | `service.stats()`  |
 | api   | `TITANIC_API_URL=http://127.0.0.1:8000 streamlit run ds_app.py` (or sidebar text box) | `httpx` client → `/predict/csv`, `/evaluate` | `GET /stats` |
 
-The app shows which mode it is in (sidebar badge) and falls back to local with a warning if the
-API is unreachable. The assignment's "load the trained model from disk" requirement is met by
-local mode; API mode is the bonus.
+The app shows which mode it is in (sidebar badge) and falls back to local mode with a warning if
+the API is unreachable. Local mode covers the assignment's "load the trained model from disk"
+requirement; API mode is extra.
 
 ---
 
@@ -195,5 +200,5 @@ local mode; API mode is the bonus.
 - `/metrics` contains `titanic_requests_total` and `titanic_queue_depth`.
 - `/stats` schema validates as `StatsResponse`.
 
-`scripts/load_test.py --n 300 --concurrency 16 --model deep` is not a test but the README shows
-its output and the Ops-tab screenshot taken during it.
+`scripts/load_test.py --n 300 --concurrency 16 --model deep` is not a test, but the README shows
+its output and the Ops-tab screenshot taken while it ran.

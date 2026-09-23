@@ -1,14 +1,14 @@
-# CLAUDE.md — Titanic Survival: End-to-End DS Take-Home
+# CLAUDE.md: Titanic Survival, End-to-End DS Take-Home
 
 This file is read by Claude Code at the start of every session. Follow it strictly.
 Companion docs: `PLAN.md` (10-hour execution plan), `docs/ARCHITECTURE.md` (module contracts,
-artifact schema, UI spec), `docs/DECISIONS.md` (why we did what we did — interviewer Q&A),
+artifact schema, UI spec), `docs/DECISIONS.md` (why we did what we did, as interviewer Q&A),
 `docs/API.md` (FastAPI inference service, metrics, queue model), `docs/assignment.md` (the
 original assignment text).
 
 ## 1. What this project is
 
-An interview take-home (1 day; we budget **10 working hours**). Build an end-to-end binary
+An interview take-home (1 day; we budget 10 working hours). Build an end-to-end binary
 classification pipeline on the Kaggle Titanic dataset that will be judged on: reproducibility,
 EDA depth, preprocessing soundness, PyTorch correctness, evaluation methodology, visualization,
 Streamlit UX, code organization, documentation, error handling, robustness, originality.
@@ -19,7 +19,7 @@ have a one-sentence answer to "why did you do this?" Log those answers in `docs/
 Delivery is **local-only**: the reviewer clones the GitHub repo and follows README on their own
 machine. No cloud deployment. Therefore README + a fresh-clone test are part of the deliverable.
 
-Beyond the assignment, the backend is an **instrumented inference service**: a
+Beyond the assignment, the backend is an instrumented inference service: a
 `titanic.service.InferenceService` (bounded concurrency queue + Prometheus metrics: latency per
 stage, usage in requests and rows, error rate, queue depth, in-flight, prediction drift) exposed
 by a FastAPI app (`api/main.py`) *and* used in-process by Streamlit. See `docs/API.md`. The
@@ -39,7 +39,7 @@ the bonus layer, not a dependency.
   Weights + all preprocessing artifacts are saved to `artifacts/`.
 - `ds_app.py` (Streamlit) loads artifacts from disk, accepts a CSV (upload, path, or bundled
   sample), validates schema, runs inference, and shows metrics + plots when `Survived` exists.
-  It must **not crash when `Survived` is absent** — it runs inference and explains that metrics
+  It must **not crash when `Survived` is absent**; it runs inference and explains that metrics
   need labels.
 - Fixed seeds everywhere (`random`, `numpy`, `torch`, sklearn `random_state`); CPU-only;
   deterministic algorithms.
@@ -57,18 +57,18 @@ Four models, one preprocessor, one artifact contract, all selectable in the app:
 |--------|-----------|------------------------------|-------------------------------------------------------------------|--------------------------------------------------|
 | `fast` | torch     | `TitanicLinear`              | Logistic regression in PyTorch: one-hot cats + numerics → `Linear(→1)` | Interpretable, <5 s, honest in-framework baseline |
 | `deep` | torch     | `TitanicMLP`                 | Categorical embeddings + numerics → MLP (2 hidden, dropout, weight decay, early stopping) | The main required NN                             |
-| `attn` | torch     | `TitanicAttention`           | Per-feature tokens + CLS → 1–2 `TransformerEncoder` layers → head (tiny FT-Transformer) | "Originality" model; **first to cut if behind**  |
+| `attn` | torch     | `TitanicAttention`           | Per-feature tokens + CLS → 1-2 `TransformerEncoder` layers → head (tiny FT-Transformer) | "Originality" model; **first to cut if behind**  |
 | `gbdt` | sklearn   | `HistGradientBoostingClassifier` | Trees on the same preprocessed features (categorical mask)     | Strongest classical reference, selectable too    |
 
 `train.py --model {fast,deep,attn,gbdt,all}` trains and registers each in
-`artifacts/registry.json`. The app's **Compare models** tab shows all trained models side by side.
+`artifacts/registry.json`. The app's Compare models tab shows all trained models side by side.
 Priority order if time runs short: `fast` → `deep` → `gbdt` → API+Ops → `attn`.
 With the API in scope, **`attn` is built only if Phase 5 ends ahead of schedule.**
 
 If a simpler model beats a fancier one on validation, **report it honestly** and explain why
 (n=712, tabular data, strong low-order signal, NN variance). Never "fix" it by re-tuning against
-validation. The interesting deliverable is the *comparison with confidence intervals*, not the
-winner.
+validation. What matters in the deliverable is the comparison with confidence intervals, more
+than which model wins.
 
 ## 4. Repository layout (do not drift from this)
 
@@ -223,12 +223,12 @@ so `torch` resolves to the small CPU wheel on Windows.
    `encoding="utf-8"`; no `os.fork`, no `num_workers>0` in DataLoader; uvicorn `--workers 1`.
 8b. Build the service layer (`metrics.py`, `service.py`) *before* the Streamlit app, so the app
    is a client of the service from the first line. Do not build the app against bundles
-   directly and "add the API later" — that creates the second code path this project forbids.
+   directly and "add the API later". That creates the second code path this project forbids.
 9. After Phase 6, do the **fresh-clone test**: clone into a temp dir, follow README verbatim in a
    *new* PowerShell window, confirm `train.py` and the app run. Fix anything that required "knowing".
 10. Screenshots of the app go in `docs/screenshots/` and are referenced from README.
 
-## 8. Things that quietly lose points — check them
+## 8. Things that quietly lose points (check them)
 
 - Preprocessing fitted on the full dataframe before splitting → leakage.
 - Age imputed with a global median instead of a fitted, group-aware value (we use Title-median).
@@ -243,6 +243,6 @@ so `torch` resolves to the small CPU wheel on Windows.
 - README that says "pip install" but never says where `train.csv` comes from or how to get a
   Kaggle token.
 - Streamlit app that breaks when the API is down (must fall back to local mode with a warning).
-- Metrics that only exist in the API path — the Ops tab must show numbers in local mode too.
+- Metrics that only exist in the API path. The Ops tab must show numbers in local mode too.
 - Queue depth measured as thread-pool size or in-flight count (wrong): it is *waiting*, not
   *executing*, requests.

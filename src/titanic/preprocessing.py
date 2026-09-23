@@ -1,8 +1,8 @@
 """The fitted preprocessor: imputation, scaling and categorical encoding.
 
-Everything this class learns -- median ages per title, the fare median, the
-embarkation mode, per-column scaling statistics and the category vocabularies
--- is fitted **once, on the training split only**, and then serialised to JSON.
+Everything this class learns (median ages per title, the fare median, the
+embarkation mode, per-column scaling statistics and the category vocabularies)
+is fitted once, on the training split only, and then serialised to JSON.
 Validation data and every inference request are transformed with those frozen
 values. That single rule is what keeps the reported metrics honest.
 
@@ -65,7 +65,7 @@ class NotFittedError(RuntimeError):
     """Raised when :meth:`Preprocessor.transform` is called before ``fit``.
 
     Defined here rather than imported from scikit-learn so the error belongs to
-    this project's own exception hierarchy -- the service layer maps its own
+    this project's own exception hierarchy. The service layer maps its own
     typed exceptions to HTTP codes and should not depend on sklearn's tree.
     """
 
@@ -195,7 +195,7 @@ class Preprocessor:
         The order of operations matters and is fixed: impute ``Embarked``,
         impute ``Fare``, **recompute** ``LogFare`` from the imputed fare,
         impute ``Age`` by title, then standardise and encode. Recomputing
-        ``LogFare`` after imputation is essential -- imputing the log column
+        ``LogFare`` after imputation is necessary: imputing the log column
         directly would apply a median taken on the wrong scale.
 
         This method must never modify fitted state. ``tests/test_preprocessing``
@@ -307,7 +307,7 @@ class Preprocessor:
     def _as_key(value: Any) -> str:
         """Normalise a category value to a JSON-safe dictionary key.
 
-        Categories arrive as a mix of types -- ``Pclass`` is an int, ``Sex`` a
+        Categories arrive as a mix of types: ``Pclass`` is an int, ``Sex`` a
         string, ``IsAlone`` a numpy int. JSON object keys must be strings, so
         everything is stringified on both the fit and the transform path. This
         also makes ``3`` and ``"3"`` the same level, which is what a user
@@ -347,7 +347,7 @@ class Preprocessor:
             ``docs/ARCHITECTURE.md §4``.
 
         Raises:
-            NotFittedError: If called before :meth:`fit` -- an unfitted
+            NotFittedError: If called before :meth:`fit`, since an unfitted
                 preprocessor has nothing meaningful to serialise.
         """
         if not self._fitted:

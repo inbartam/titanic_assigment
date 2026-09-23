@@ -28,8 +28,12 @@ prometheus-client==0.26.0
 httpx==0.28.1
 python-multipart==0.0.32
 
-# --- notebook (EDA only) ---------------------------------------------------
+# --- notebooks only --------------------------------------------------------
+# kaleido renders Plotly figures to static PNG so notebooks/results.ipynb
+# displays on GitHub. Without it the evaluation figures would be interactive
+# only, and invisible to anyone reading the repo rather than running it.
 jupyter==1.1.1
+kaleido==1.4.0
 matplotlib==3.11.2
 seaborn==0.13.2
 

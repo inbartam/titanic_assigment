@@ -2,7 +2,7 @@
 
 These check the HTTP contract: status codes, the single error shape, and that
 a traceback never reaches the client. The inference behaviour itself is tested
-in ``test_service.py`` -- the API is a thin adapter and these tests treat it
+in ``test_service.py``; the API is a thin adapter and these tests treat it
 as one.
 """
 

@@ -237,8 +237,8 @@ def train_torch_model(
 ) -> dict[str, Any]:
     """Train a model with early stopping on an inner carve-out.
 
-    The carve-out is taken from the data passed in -- which is the *training
-    split* -- so the held-out validation set is never involved in deciding when
+    The carve-out is taken from the data passed in, which is the training
+    split, so the held-out validation set is never involved in deciding when
     to stop.
 
     Args:

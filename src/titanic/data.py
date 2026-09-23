@@ -30,7 +30,7 @@ from titanic.utils import get_logger
 
 logger = get_logger(__name__)
 
-#: Kaggle competition slug. Only ``train.csv`` is ever requested from it --
+#: Kaggle competition slug. Only ``train.csv`` is ever requested from it;
 #: the assignment forbids using test.csv and gender_submission.csv.
 COMPETITION = "titanic"
 TRAIN_FILE = "train.csv"
@@ -107,7 +107,7 @@ def _load_kaggle_credentials() -> str:
         f"      newer KGAT_ token to {Path.home() / '.kaggle' / 'access_token'}.\n"
         "  (b) Set KAGGLE_API_TOKEN (or KAGGLE_USERNAME and KAGGLE_KEY) in your shell.\n"
         "Then accept the competition rules once at\n"
-        "https://www.kaggle.com/competitions/titanic/rules -- downloads 403 otherwise.\n"
+        "https://www.kaggle.com/competitions/titanic/rules. Downloads return 403 otherwise.\n"
         "No credentials? Every command accepts --data-path data/sample_train.csv instead."
     )
 
@@ -129,7 +129,7 @@ def fetch_from_kaggle(dest_dir: Path | None = None, *, force: bool = False) -> P
         Path to the downloaded ``train.csv``.
 
     Raises:
-        KaggleAuthError: If credentials are missing, or the API rejects them --
+        KaggleAuthError: If credentials are missing, or the API rejects them,
             most often because the competition rules have not been accepted.
     """
     dest_dir = Path(dest_dir) if dest_dir is not None else Paths().data
@@ -145,7 +145,7 @@ def fetch_from_kaggle(dest_dir: Path | None = None, *, force: bool = False) -> P
 
     # Imported lazily: the kaggle package authenticates at import time in some
     # versions, which would make merely importing this module fail without
-    # credentials -- even for users who only ever pass --data-path.
+    # credentials, even for users who only ever pass --data-path.
     import kaggle
 
     try:
@@ -245,7 +245,7 @@ def validate_schema(df: pd.DataFrame, *, require_target: bool = False) -> None:
         )
 
     # Numeric checks: coerce a copy and look for values that became NaN without
-    # having been NaN to begin with. That distinguishes "missing" (legitimate --
+    # having been NaN to begin with. That distinguishes "missing" (legitimate:
     # Age has 177 blanks) from "not a number" (a typo such as 'twenty').
     for col in NUMERIC_COLUMNS:
         if col not in df.columns:
@@ -299,7 +299,7 @@ def stratified_split(
         positions line up with dataframe rows.
 
     Raises:
-        SchemaError: If the target column is absent -- splitting without labels
+        SchemaError: If the target column is absent. Splitting without labels
             would silently produce an unusable training set.
     """
     config = config or SplitConfig()

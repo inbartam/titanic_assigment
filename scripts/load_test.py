@@ -47,7 +47,7 @@ def build_payload(n_rows: int, model: str | None, threshold: float) -> dict:
     """Build a /predict body from the committed sample dataset.
 
     Real rows are used rather than synthetic ones so preprocessing does the
-    same work it would in production -- title extraction, deck parsing and
+    same work it would in production: title extraction, deck parsing and
     imputation all behave differently on tidy fake data.
 
     Args:

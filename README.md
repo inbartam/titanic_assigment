@@ -1,19 +1,19 @@
-# Titanic Survival — End-to-End Classification Pipeline (PyTorch + Streamlit)
+# Titanic Survival: End-to-End Classification Pipeline (PyTorch + Streamlit)
 
-Fetch the Kaggle Titanic `train.csv` programmatically, explore it, build a leak-safe
-preprocessing pipeline, train a **ladder of four classifiers on one shared pipeline** —
+This project fetches the Kaggle Titanic `train.csv` programmatically, explores it, and builds a
+leak-safe preprocessing pipeline. On top of that one pipeline it trains four classifiers: a
 logistic regression in PyTorch, an MLP with categorical embeddings, a tiny FT-Transformer-style
-attention model, and a gradient-boosting reference — evaluate them on a held-out split with
-bootstrap confidence intervals, compare them in a Streamlit app, and serve them through an
-**instrumented inference API** (FastAPI: per-stage latency, usage, error rate, queue depth,
+attention model, and a gradient-boosting reference. The models are evaluated on a held-out split
+with bootstrap confidence intervals, compared in a Streamlit app, and served through an
+instrumented inference API (FastAPI with per-stage latency, usage, error rate, queue depth, a
 drift signal, Prometheus `/metrics` and an Ops dashboard in the app).
 
 ![App overview](docs/screenshots/overview.png)
 
-**The headline finding is a negative one, and it is reported as such:** on 179 held-out
-passengers, a **34-parameter logistic regression matches a 7,361-parameter transformer**. Every
-model's 95% confidence interval overlaps every other's, so they are not statistically
-distinguishable on this data. The interesting deliverable is that comparison, not a winner.
+The main finding is a negative one. On 179 held-out passengers, a 34-parameter logistic
+regression matches a 7,361-parameter transformer. Every model's 95% confidence interval overlaps
+every other's, so the models cannot be told apart statistically on this data. The comparison
+itself is the result we care about; there is no winner to announce.
 
 ---
 
@@ -36,8 +36,8 @@ distinguishable on this data. The interesting deliverable is that comparison, no
 
 ## Quick start
 
-Requires **Python 3.11+** (developed on 3.14; 3.11 and 3.12 also work). Trained artifacts are
-committed, so **the app runs immediately after install — no Kaggle credentials needed.**
+Requires Python 3.11+ (developed on 3.14; 3.11 and 3.12 also work). Trained artifacts are
+committed, so the app runs right after install without Kaggle credentials.
 
 **Windows (PowerShell)**
 
@@ -75,21 +75,21 @@ Without Kaggle credentials, train on the committed 100-row sample instead:
 python train.py --model all --data-path data\sample_train.csv --no-cv
 ```
 
-(That is a smoke run, not real results — 80 training rows.)
+That is a smoke run with 80 training rows, so don't read anything into its numbers.
 
 > **Note on dependency pins.** `pandas`, `scipy` and `scikit-learn` are pinned below their
-> latest releases. This is deliberate: Windows **Smart App Control** blocks freshly-published,
-> low-reputation native `.pyd` files *at import time*, and `pandas 3.0.6`, `scipy 1.18.1` and
-> `scikit-learn 1.9.1` all installed successfully and then failed with
+> latest releases on purpose. Windows Smart App Control blocks freshly published, low-reputation
+> native `.pyd` files *at import time*. `pandas 3.0.6`, `scipy 1.18.1` and `scikit-learn 1.9.1`
+> all installed successfully and then failed with
 > `DLL load failed ... An Application Control policy has blocked this file`. The pinned versions
 > load cleanly. See [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
 ## Kaggle setup
 
-Only needed to **retrain**. The app and the committed artifacts work without it.
+You only need this to retrain. The app and the committed artifacts work without it.
 
 1. Create an API token at <https://www.kaggle.com/settings> → *Create New Token*. Kaggle issues
-   either a classic `kaggle.json` or a newer `KGAT_`-prefixed access token; **both work**:
+   either a classic `kaggle.json` or a newer `KGAT_`-prefixed access token. Both work:
 
    | credential | where to put it |
    |---|---|
@@ -98,12 +98,12 @@ Only needed to **retrain**. The app and the committed artifacts work without it.
    | classic pair | `KAGGLE_USERNAME` + `KAGGLE_KEY` environment variables |
 
 2. Accept the competition rules once at
-   <https://www.kaggle.com/competitions/titanic/rules> — the API returns 403 otherwise.
-3. `python -m titanic.data --fetch` downloads **only `train.csv`** to `data/train.csv`
+   <https://www.kaggle.com/competitions/titanic/rules>. The API returns 403 otherwise.
+3. `python -m titanic.data --fetch` downloads only `train.csv` to `data/train.csv`
    (git-ignored). `test.csv` and `gender_submission.csv` are never downloaded or read.
 
-Without credentials the command prints the exact setup steps and exits cleanly — never a stack
-trace.
+Without credentials the command prints the setup steps and exits cleanly instead of showing a
+stack trace.
 
 ## Repository structure
 
@@ -115,8 +115,10 @@ trace.
 ├── data/
 │   └── sample_train.csv      # 100 stratified rows, committed (demo + smoke tests)
 ├── notebooks/
-│   ├── eda.ipynb             # 11 sections, 7 figures, executed with outputs
-│   └── build_eda.py          # generates the notebook (a .ipynb diff is unreviewable)
+│   ├── eda.ipynb             # the DATA: 11 sections, 7 figures, executed with outputs
+│   ├── results.ipynb         # the RESULTS: 23 figures, re-scored from the artifacts
+│   ├── build_eda.py          # generates eda.ipynb (a .ipynb diff is unreviewable)
+│   └── build_results.py      # generates results.ipynb
 ├── src/titanic/
 │   ├── config.py             # Paths, SplitConfig, TrainConfig, schema constants
 │   ├── data.py               # Kaggle fetch, load_csv, validate_schema, stratified_split
@@ -167,7 +169,7 @@ Kaggle train.csv ─► data.load_csv ─► validate_schema ─► stratified_s
                               metrics.json + plots/*.html + registry.json
 ```
 
-At inference time both the app and the API call the **same object**:
+At inference time the app and the API both call the same object:
 
 ```
 InferenceService.predict(df, model, threshold)
@@ -175,9 +177,9 @@ InferenceService.predict(df, model, threshold)
        ─► bundle.predict_proba ─► threshold        [every stage timed, every call recorded]
 ```
 
-Nothing in `app/` or `api/` touches a model directly. That is why the Ops tab shows real
-latency and queue numbers **in local mode with no server running** — the metrics belong to the
-service, not to the web framework.
+Nothing in `app/` or `api/` touches a model directly. Because the metrics belong to the service
+and not to the web framework, the Ops tab shows real latency and queue numbers in local mode
+with no server running.
 
 ### `train.py` options
 
@@ -197,18 +199,19 @@ service, not to the web framework.
 ## Methodology
 
 **Split.** Stratified 80/20 from `train.csv`, seed 42 → 712 train / 179 validation. The
-validation split is scored **exactly once**, at the end of training. Every selection decision
-uses 5-fold stratified cross-validation *inside* the training split.
+validation split is scored exactly once, at the end of training. Every selection decision uses
+5-fold stratified cross-validation inside the training split.
 
-**EDA.** [`notebooks/eda.ipynb`](notebooks/eda.ipynb) splits **before** exploring and deletes
-the validation frame, so the held-out rows never influence a modelling decision — analyst-level
-leakage, which no code-level guard would catch. Eleven Question → Finding → Decision sections.
+**EDA.** [`notebooks/eda.ipynb`](notebooks/eda.ipynb) splits before exploring and deletes the
+validation frame, so the held-out rows never influence a modelling decision. That kind of
+analyst-level leakage is something no code-level guard would catch. The notebook has eleven
+sections, each written as Question → Finding → Decision.
 
 **Features.** `Pclass`, `Sex`, `Embarked`, `Title` (from `Name`), `Deck` (from `Cabin`; missing
 → `U`), `IsAlone`, `Age` (imputed by Title median), `log1p(Fare)`, `FamilySize`.
 
-Batch-dependent features (ticket-group size, fare-per-person) were deliberately **excluded**.
-The notebook demonstrates why in two lines of output:
+Batch-dependent features (ticket-group size, fare-per-person) were left out on purpose. The
+notebook shows why in two lines of output:
 
 ```
 TicketGroupSize computed on a single-row request: 1
@@ -216,15 +219,16 @@ The same passenger's true value in the training batch: 6
 ```
 
 The same passenger gets a different feature value depending on who else is in the file. That is
-train/serve skew, plus cross-row label leakage within training.
+train/serve skew, and within training it also leaks labels across rows.
 
-**Preprocessing.** A `Preprocessor` fitted on the training split only; every learned value
+**Preprocessing.** A `Preprocessor` is fitted on the training split only. Every learned value
 (Title→Age median table, Fare median, Embarked mode, scaling statistics, category vocabularies
 with an `<UNK>` index at 0) is serialised to `preprocessor.json` and reused unchanged at
-validation and inference. `Master → 3.0` against a global median of `28.5` is the entire
-argument for title-based imputation.
+validation and inference. The fitted value `Master → 3.0`, against a global median of `28.5`, is
+most of the case for title-based imputation.
 
-**Models** — all four consume the *same* `(X_num, X_cat)` arrays and the same artifact contract.
+**Models.** All four consume the same `(X_num, X_cat)` arrays and follow the same artifact
+contract.
 
 | name | framework | architecture | params | selection |
 |---|---|---|---|---|
@@ -233,15 +237,15 @@ argument for title-based imputation.
 | `gbdt` | scikit-learn | HistGradientBoosting with a categorical mask | 1,084 nodes | 4-config grid, 5-fold CV |
 | `attn` | PyTorch | feature tokens + `[CLS]` → 2 transformer layers (d=16) | 7,361 | single config (time-boxed) |
 
-`fast` is logistic regression *implemented in PyTorch* on purpose: same loop, loss, optimiser,
-batching and seed as the MLP, so any gap between them is attributable to the architecture and
-not to a different training recipe.
+`fast` is logistic regression implemented in PyTorch on purpose. It uses the same loop, loss,
+optimiser, batching and seed as the MLP, so a gap between the two can be put down to the
+architecture rather than a different training recipe.
 
-PyTorch models use `BCEWithLogitsLoss`, `AdamW`, batch 64, and **early stopping on a 10%
-stratified carve-out of the training split** — never on the held-out set.
+PyTorch models use `BCEWithLogitsLoss`, `AdamW`, batch 64, and early stopping on a 10%
+stratified carve-out of the training split. The held-out set is never used for early stopping.
 
 **Evaluation.** Accuracy, precision, recall, F1, ROC-AUC, PR-AUC, Brier and a confusion matrix
-at threshold 0.5, each with a **95% stratified bootstrap CI** (1000 resamples).
+at threshold 0.5, each with a 95% stratified bootstrap CI (1000 resamples).
 
 ## Results
 
@@ -255,31 +259,39 @@ Held-out validation, n = 179, threshold 0.5, 95% bootstrap CI in brackets:
 | `attn` | 7,361 | 0.788 [0.732, 0.844] | 0.792 [0.694, 0.889] | 0.609 [0.493, 0.725] | 0.689 [0.589, 0.775] | 0.840 [0.776, 0.905] | 0.824 [0.754, 0.891] |
 
 Brier scores (calibration): `fast` 0.136, `deep` 0.137, `gbdt` 0.137, `attn` 0.144.
-Inference: 1.9–17.1 ms per 1000 rows.
+Inference: 1.9 to 17.1 ms per 1000 rows.
 
 **Which would I ship, and why?**
 
-`deep` and `fast` tie at 0.859 ROC-AUC; `gbdt` takes accuracy and F1; `attn` is last on every
-metric. But **every model's point estimate falls inside every other model's 95% interval**, so
-none of those orderings is statistically meaningful at n = 179. The intervals are roughly
-±0.06 wide — far wider than the 0.019 spread between best and worst.
+`deep` and `fast` tie at 0.859 ROC-AUC, `gbdt` has the best accuracy and F1, and `attn` is last
+on every metric. However, every model's point estimate falls inside every other model's 95%
+interval, so none of these orderings means much at n = 179. The intervals are roughly ±0.06 wide,
+far wider than the 0.019 spread between the best and worst model.
 
-**I would ship `fast`.** It is a 34-parameter logistic regression that matches the best measured
-ROC-AUC, trains in under two seconds, runs in 1.9 ms per 1000 rows, and its coefficients can be
-read directly. Choosing the 7,361-parameter transformer here would mean paying 200× the
-parameters and 8× the latency for a difference the data cannot resolve.
+I would ship `fast`. It is a 34-parameter logistic regression that matches the best measured
+ROC-AUC, trains in under two seconds, runs in 1.9 ms per 1000 rows, and has coefficients you can
+read directly. Choosing the 7,361-parameter transformer would mean paying 200× the parameters and
+8× the latency for a difference the data cannot resolve.
 
-This is the expected result and the EDA predicted it: 712 training rows, 9 features, and
-dominant low-order signal (sex, then class, then age). The notebook's classical cross-validation
-established the expectation band (ROC-AUC 0.86–0.89) *before* any PyTorch was written, and it
-also showed that the fold-to-fold spread (0.080) exceeds the gap between any two models. The
-neural networks were never likely to win; demonstrating that honestly, with intervals, is a more
-useful result than a tuned number.
+This is what we expected, and the EDA predicted it: 712 training rows, 9 features, and a signal
+dominated by a few low-order effects (sex, then class, then age). The notebook's classical
+cross-validation set the expectation band (ROC-AUC 0.86 to 0.89) before any PyTorch code was
+written. It also showed that the fold-to-fold spread (0.080) is larger than the gap between any
+two models. The neural networks were unlikely to win, and showing that clearly, with intervals,
+is more useful than a tuned number.
 
 ![Model comparison](docs/screenshots/compare.png)
 
-Reproduce with `python train.py --model all` (~80 s on CPU). Same machine and torch version →
-identical numbers; across platforms expect agreement to ~3 decimals.
+Every figure behind these numbers is in [`notebooks/results.ipynb`](notebooks/results.ipynb),
+alongside the code that produced it: ROC and PR curves for all four models, confusion matrices,
+threshold sweeps, calibration, probability distributions, training curves and the cost
+comparison. That notebook loads the saved bundles, recreates the held-out split and re-scores
+every model from scratch, then asserts that the metrics it computes match
+`artifacts/*/metrics.json` to 10 decimal places. If the pipeline had drifted, it would fail
+rather than mislead.
+
+Reproduce with `python train.py --model all` (~80 s on CPU). The same machine and torch version
+give identical numbers; across platforms, expect agreement to about 3 decimals.
 
 ## Streamlit app
 
@@ -287,23 +299,23 @@ identical numbers; across platforms expect agreement to ~3 decimals.
 streamlit run ds_app.py        # local mode: loads artifacts from disk, no server needed
 ```
 
-Six tabs — **Overview · Data · Predictions · Evaluation · Compare models · Ops**.
+The app has six tabs: Overview, Data, Predictions, Evaluation, Compare models and Ops.
 
 | | |
 |---|---|
 | ![Data tab](docs/screenshots/data.png) | ![Predictions tab](docs/screenshots/predictions.png) |
-| **Data** — preview, missingness, schema validation with actionable errors | **Predictions** — probability and class per row, downloadable CSV |
+| **Data**: preview, missingness, schema validation with actionable errors | **Predictions**: probability and class per row, downloadable CSV |
 | ![Evaluation tab](docs/screenshots/evaluation.png) | ![Ops tab](docs/screenshots/ops.png) |
-| **Evaluation** — metrics with CIs, confusion matrix, ROC, PR, threshold sweep, calibration | **Ops** — latency per stage, queue depth, error rate, drift |
+| **Evaluation**: metrics with CIs, confusion matrix, ROC, PR, threshold sweep, calibration | **Ops**: latency per stage, queue depth, error rate, drift |
 
 - **Sidebar:** model selector (only models that exist), data source (bundled sample / upload /
   path on disk), decision-threshold slider, and a mode badge showing Local or API.
-- **Evaluation** appears only when the CSV has a `Survived` column; otherwise the app runs
-  inference and explains that metrics need labels. **It does not crash.**
-- **Compare models** writes its verdict paragraph *from the numbers*, so it cannot drift from
-  the results after a retrain.
-- Any exception inside a tab renders as a readable message with the traceback tucked into an
-  expander — never a raw red traceback.
+- **Evaluation** appears only when the CSV has a `Survived` column. Without it, the app still
+  runs inference and explains that metrics need labels; it does not crash.
+- **Compare models** generates its verdict paragraph from the numbers, so the text stays in step
+  with the results after a retrain.
+- An exception inside a tab is shown as a readable message, with the traceback tucked into an
+  expander instead of a raw red traceback.
 
 Expected input: the raw Kaggle Titanic schema (`Pclass, Name, Sex, Age, SibSp, Parch, Fare`
 required; `PassengerId, Cabin, Embarked, Ticket, Survived` optional).
@@ -332,15 +344,14 @@ curl -s -X POST http://127.0.0.1:8000/predict -H 'content-type: application/json
 | `GET /metrics` | Prometheus exposition (`titanic_*` plus process metrics) |
 | `POST /admin/reload` | reload artifacts; disabled unless `TITANIC_ADMIN_TOKEN` is set |
 
-Errors always use one shape — `{"error", "message", "details"}` — and a traceback is never
-returned to the client; it is logged server-side against the `X-Request-ID` echoed in the
-response.
+All errors use one shape, `{"error", "message", "details"}`. Tracebacks are not returned to the
+client; they are logged on the server against the `X-Request-ID` that is echoed in the response.
 
 **Back-pressure.** Concurrency is bounded (`TITANIC_MAX_CONCURRENCY=2`, `TITANIC_MAX_QUEUE=64`,
 `TITANIC_QUEUE_TIMEOUT_S=5`). Excess load gets `503` + `Retry-After: 1` rather than unbounded
-latency. **Queue depth counts requests that are *waiting*, not executing** — in-flight saturates
-at `max_concurrency` the moment the service is busy and stops being informative, which is why
-autoscalers watch depth instead.
+latency. Queue depth counts requests that are *waiting*, not the ones executing. In-flight count
+hits `max_concurrency` as soon as the service is busy and then stops telling you anything, which
+is why autoscalers watch depth instead.
 
 ```
 $ python scripts/load_test.py --n 300 --concurrency 16 --model deep
@@ -352,9 +363,10 @@ load_test: n=300 concurrency=16 model=deep rows/req=1
   server p95 by stage: queue=154.267ms  preprocess=9.891ms  inference=16.608ms  postprocess=0.056ms
 ```
 
-That last line is the argument for per-stage timing: under load **queue p95 is 154 ms while the
-model itself takes 16.6 ms**. Almost all the latency is waiting, not computing — so the fix is
-capacity, not a faster model. In-flight correctly caps at 2 while depth climbs to 13.
+The last line is why per-stage timing is worth having. Under load, queue p95 is 154 ms while the
+model itself takes 16.6 ms. Almost all of the latency is waiting rather than computing, so the
+fix would be more capacity, not a faster model. In-flight correctly stays at 2 while depth climbs
+to 13.
 
 Full specification: [`docs/API.md`](docs/API.md).
 
@@ -365,8 +377,8 @@ Full specification: [`docs/API.md`](docs/API.md).
 | local (default) | `streamlit run ds_app.py` | in-process `InferenceService` | `service.stats()` |
 | api | `TITANIC_API_URL=http://127.0.0.1:8000 streamlit run ds_app.py` | `httpx` → `/predict/csv`, `/evaluate` | `GET /stats` |
 
-If the API is unreachable the app falls back to local mode with a visible warning. The API is a
-bonus layer, never a dependency.
+If the API is unreachable, the app falls back to local mode and shows a warning. The API is an
+optional extra layer; the app does not depend on it.
 
 ## Testing
 
@@ -387,7 +399,7 @@ ruff check . ; black --check .
 | `test_api.py` | status codes, single error shape, no traceback to the client |
 | `test_notebook.py` | notebook has not drifted from `src/`, has no stored tracebacks |
 
-The load-bearing one:
+The most important one is the leakage test:
 
 ```python
 before = json.dumps(fitted.to_dict(), sort_keys=True)
@@ -396,27 +408,31 @@ after  = json.dumps(fitted.to_dict(), sort_keys=True)
 assert before == after                        # nothing was learned from it
 ```
 
-It compares the *whole* serialised state, so a parameter added later is covered automatically.
+It compares the whole serialised state, so a parameter added later is covered automatically.
 
 ## Design decisions
 
-The full log, in interviewer Q&A format, is [`docs/DECISIONS.md`](docs/DECISIONS.md).
+The full log, written as interviewer Q&A, is in [`docs/DECISIONS.md`](docs/DECISIONS.md).
 [`docs/CODE_WALKTHROUGH.md`](docs/CODE_WALKTHROUGH.md) explains every module line by line.
 
-Headlines: four models on one preprocessor and one artifact contract · JSON artifacts (joblib
-only for `gbdt`, which has no clean JSON form) · batch-dependent features excluded · selection
-by CV inside the training split only · bootstrap CIs on everything · metrics owned by the
-service rather than the web layer.
+In short:
+
+- four models on one preprocessor and one artifact contract
+- JSON artifacts (joblib only for `gbdt`, which has no clean JSON form)
+- batch-dependent features excluded
+- selection by CV inside the training split only
+- bootstrap CIs on every metric
+- metrics owned by the service rather than the web layer
 
 ## Assumptions & limitations
 
-- A single 80/20 split → validation estimates carry roughly ±0.06 uncertainty. The reported
+- A single 80/20 split means validation estimates carry roughly ±0.06 uncertainty. The reported
   intervals reflect that, and it is why no model is declared a winner.
-- Model selection on 712 rows: the grids are intentionally tiny (8 configs for `deep`, 4 for
-  `gbdt`) because the CV standard deviation (~0.02) exceeds most between-config differences.
+- Model selection on 712 rows: the grids are kept small (8 configs for `deep`, 4 for `gbdt`)
+  because the CV standard deviation (~0.02) exceeds most between-config differences.
 - No nested CV, and no hyperparameter search for `fast` or `attn`.
-- `attn` is a demonstration that the modern tabular-DL architecture can be implemented correctly
-  and small. On 712 rows it was not expected to win, and it did not.
+- `attn` shows that the modern tabular-DL architecture can be implemented correctly at a small
+  size. On 712 rows it was not expected to win, and it did not.
 - Metrics are per-process; run `uvicorn --workers 1`. No auth or per-client rate limiting.
 - Determinism holds per machine and torch version, not bit-exactly across platforms.
 - The app expects the Kaggle column names; there is no fuzzy column matching.

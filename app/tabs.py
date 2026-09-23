@@ -1,8 +1,8 @@
 """One function per tab of the Streamlit app.
 
-Splitting the tabs out keeps ``ds_app.py`` down to wiring -- sidebar, data
-loading, inference, then six calls -- which is the only way that file stays
-readable as it grows.
+Splitting the tabs out keeps ``ds_app.py`` down to wiring (sidebar, data
+loading, inference, then six calls), which keeps that file readable as it
+grows.
 
 Every function takes what it needs as arguments and returns nothing. None of
 them loads a model or reads the filesystem directly: inference arrives as a
@@ -33,23 +33,23 @@ def render_overview(selected_model: str, models: dict[str, dict[str, Any]]) -> N
     """
     entry = models.get(selected_model, {})
 
-    st.header("Titanic survival — inference and evaluation")
+    st.header("Titanic survival: inference and evaluation")
     st.markdown(f"""
 This app runs a trained classifier over any CSV in the raw Kaggle Titanic schema and, when the
 file carries `Survived` labels, evaluates it.
 
-**Selected model:** `{selected_model}` — {ui.MODEL_DESCRIPTIONS.get(selected_model, "model")},
+**Selected model:** `{selected_model}`, {ui.MODEL_DESCRIPTIONS.get(selected_model, "model")},
 {entry.get("n_params", 0):,} parameters.
 
 **Features.** `Pclass`, `Sex`, `Embarked`, `Title` (from `Name`), `Deck` (from `Cabin`; missing
 becomes `U`), `IsAlone`, `Age` (imputed by Title median), `log1p(Fare)` and `FamilySize`.
-Batch-dependent features such as ticket-group size were deliberately excluded — they cannot be
-computed consistently for a single passenger, which would be train/serve skew.
+Batch-dependent features such as ticket-group size were left out. They cannot be computed
+consistently for a single passenger, so using them would cause train/serve skew.
 
 **How it was trained.**
 - Stratified 80/20 split of `train.csv`, seed 42. The held-out 20% is scored exactly once.
 - The preprocessor is fitted on the training split only, then serialised to JSON.
-- Hyperparameters chosen by 5-fold cross-validation **inside** the training split.
+- Hyperparameters chosen by 5-fold cross-validation inside the training split.
 - Early stopping on a 10% carve-out of the training split, never on the held-out set.
 - Every metric carries a 95% bootstrap confidence interval.
 
@@ -124,7 +124,7 @@ def render_evaluation(evaluation: EvaluationResult | None, has_labels: bool) -> 
         # The assignment requires this path to be graceful rather than a crash.
         st.info(
             "This file has no `Survived` column, so there is nothing to score against. "
-            "Predictions are still available in the Predictions tab — add a `Survived` "
+            "Predictions are still available in the Predictions tab. Add a `Survived` "
             "column of 0/1 labels to see metrics here.",
             icon="ℹ️",
         )
@@ -243,7 +243,7 @@ def render_compare(
             with tab:
                 history = load_history(artifacts_directory, name)
                 st.plotly_chart(
-                    plots.training_curves_fig(history, f"{name} — training curves"),
+                    plots.training_curves_fig(history, f"{name}: training curves"),
                     use_container_width=True,
                 )
                 if history.get("cv_grid"):
@@ -261,8 +261,8 @@ def render_ops(predictor: Predictor) -> None:
     """
     st.subheader("Service metrics")
     st.caption(
-        "Recorded inside `InferenceService`, not in the web layer — which is why these "
-        "numbers are populated in local mode with no server running."
+        "Recorded inside `InferenceService`, not in the web layer, so these numbers are "
+        "populated in local mode with no server running."
     )
     if st.button("Refresh", icon="🔄"):
         st.rerun()

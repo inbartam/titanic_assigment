@@ -2,8 +2,8 @@
 
 The queue tests are the interesting ones. They block the service deliberately
 and assert on the gauges, because "queue depth" is the number the Ops tab
-presents as an autoscaling signal -- if it silently measured in-flight count or
-thread-pool size instead, the dashboard would be confidently wrong.
+presents as an autoscaling signal. If it measured in-flight count or
+thread-pool size instead, the dashboard would be wrong.
 """
 
 from __future__ import annotations

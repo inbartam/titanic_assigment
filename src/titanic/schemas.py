@@ -160,7 +160,7 @@ class ErrorResponse(BaseModel):
     """The single error shape every failing endpoint returns.
 
     One shape everywhere means a client can handle errors generically, and a
-    stack trace never reaches the caller -- it is logged server-side against a
+    stack trace never reaches the caller; it is logged server-side against a
     request id instead.
     """
 

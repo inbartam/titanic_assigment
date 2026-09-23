@@ -5,7 +5,7 @@ quietly re-implements feature logic, drifts from ``src/titanic/``, and then
 documents decisions the model does not actually follow. These tests make that
 drift a test failure rather than something a reviewer has to notice.
 
-They are static checks over the notebook JSON -- they never execute it, so the
+They are static checks over the notebook JSON. They never execute it, so the
 suite stays fast.
 """
 
@@ -20,6 +20,7 @@ from titanic.features import ENGINEERED_COLUMNS
 from titanic.preprocessing import DEFAULT_CATEGORICAL_COLS, DEFAULT_NUMERIC_COLS
 
 NOTEBOOK = Paths().notebooks / "eda.ipynb"
+RESULTS_NOTEBOOK = Paths().notebooks / "results.ipynb"
 
 #: Functions that belong to titanic.features. If the notebook defines one of
 #: these itself, the two implementations can disagree.
@@ -102,3 +103,74 @@ def test_notebook_outputs_are_committed(notebook: dict) -> None:
         if cell["cell_type"] == "code" and cell.get("execution_count")
     ]
     assert len(executed) >= 10, "notebook appears not to have been run before committing"
+
+
+@pytest.fixture(scope="module")
+def results_notebook() -> dict:
+    """Parsed results notebook JSON."""
+    if not RESULTS_NOTEBOOK.is_file():
+        pytest.skip(f"{RESULTS_NOTEBOOK} not present")
+    return json.loads(RESULTS_NOTEBOOK.read_text(encoding="utf-8"))
+
+
+def test_results_notebook_ran_without_errors(results_notebook: dict) -> None:
+    for index, cell in enumerate(results_notebook["cells"]):
+        if cell["cell_type"] != "code":
+            continue
+        for output in cell.get("outputs", []):
+            assert output.get("output_type") != "error", (
+                f"results.ipynb cell {index} stored a {output.get('ename')}. "
+                "Re-run it before committing."
+            )
+
+
+def test_results_notebook_is_fully_executed(results_notebook: dict) -> None:
+    # A half-executed notebook is the failure mode that slipped through once:
+    # the source was edited without re-running, so the stored figures no longer
+    # matched the code that supposedly produced them.
+    code_cells = [c for c in results_notebook["cells"] if c["cell_type"] == "code"]
+    unexecuted = [i for i, c in enumerate(code_cells) if not c.get("execution_count")]
+    assert not unexecuted, f"results.ipynb code cells not executed: {unexecuted}"
+
+
+def test_results_notebook_execution_order_is_sequential(results_notebook: dict) -> None:
+    # Out-of-order counts mean cells were re-run piecemeal, so the outputs may
+    # reflect state that a top-to-bottom run would never produce.
+    counts = [
+        c["execution_count"]
+        for c in results_notebook["cells"]
+        if c["cell_type"] == "code" and c.get("execution_count")
+    ]
+    assert counts == sorted(counts), f"results.ipynb ran out of order: {counts}"
+
+
+def test_results_notebook_renders_figures(results_notebook: dict) -> None:
+    images = sum(
+        1
+        for cell in results_notebook["cells"]
+        if cell["cell_type"] == "code"
+        for output in cell.get("outputs", [])
+        if "image/png" in output.get("data", {})
+    )
+    # Static PNGs, not interactive Plotly JSON: the figures must be visible to
+    # someone reading the repo on GitHub rather than running it.
+    assert images >= 15, f"expected the evaluation figures as PNGs, found {images}"
+
+
+def test_results_notebook_reuses_the_shared_plotting_module(results_notebook: dict) -> None:
+    source = "\n".join(
+        "".join(cell["source"]) for cell in results_notebook["cells"] if cell["cell_type"] == "code"
+    )
+    # The figures must come from the shared module, not be redrawn here, or the
+    # notebook and the app could show different things for the same model.
+    assert "from titanic import plots" in source
+    assert "import matplotlib" not in source, "results.ipynb must not plot independently"
+
+
+def test_eda_notebook_execution_order_is_sequential(notebook: dict) -> None:
+    counts = [
+        c["execution_count"]
+        for c in notebook["cells"]
+        if c["cell_type"] == "code" and c.get("execution_count")
+    ]
+    assert counts == sorted(counts), f"eda.ipynb ran out of order: {counts}"

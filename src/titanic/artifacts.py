@@ -13,7 +13,7 @@ One artifact contract serves both frameworks. A bundle directory contains:
 
 Everything except the torch weights and the sklearn estimator is JSON, so an
 artifact can be read in a code review. ``gbdt/model.joblib`` is the single
-exception -- scikit-learn has no clean JSON serialisation -- and the sklearn
+exception (scikit-learn has no clean JSON serialisation), and the sklearn
 version that wrote it is recorded so a mismatch warns rather than misbehaves.
 
 The crucial property: **inference never needs the training data.** A bundle
@@ -264,8 +264,8 @@ def load_bundle(directory: Path, name: str | None = None) -> Bundle:
         # joblib.load unpickles, which executes code embedded in the file, so
         # it is only ever pointed at artifacts this repository produced:
         # train.py writes them and they are committed alongside the source.
-        # The project takes no user-supplied model files -- the app and the API
-        # accept CSVs only -- so there is no untrusted path into this call.
+        # The project takes no user-supplied model files (the app and the API
+        # accept CSVs only), so there is no untrusted path into this call.
         # It is the one non-JSON artifact; scikit-learn has no clean JSON form.
         model = joblib.load(directory / SKLEARN_WEIGHTS)
         saved_version = model_config.get("sklearn_version")
@@ -291,7 +291,7 @@ def load_bundle(directory: Path, name: str | None = None) -> Bundle:
             preprocessor.cardinalities,
         )
         # weights_only=True refuses to execute arbitrary pickled code while
-        # loading -- the safe default for a file read from disk.
+        # loading, which is the safe default for a file read from disk.
         model.load_state_dict(
             torch.load(directory / TORCH_WEIGHTS, map_location="cpu", weights_only=True)
         )
@@ -339,7 +339,7 @@ def update_registry(
         registry["default"] = name
 
     # If the recorded default was never trained, fall back to any model that
-    # was -- the app must not open pointing at something that does not exist.
+    # was. The app must not open pointing at something that does not exist.
     if registry["default"] not in registry["models"]:
         registry["default"] = next(iter(registry["models"]), None)
 
@@ -392,7 +392,7 @@ def available_models(artifacts_dir: Path) -> list[str]:
     """List models that are actually loadable from disk.
 
     The registry can name a model whose directory was deleted, so entries are
-    checked against the filesystem. The app must tolerate any subset -- a
+    checked against the filesystem. The app must tolerate any subset: a
     reviewer who runs ``train.py --model fast`` should still get a working app.
 
     Args:

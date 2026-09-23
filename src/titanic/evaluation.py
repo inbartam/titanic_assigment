@@ -54,8 +54,8 @@ def compute_metrics(
 ) -> dict[str, Any]:
     """Compute the full metric set at one decision threshold.
 
-    Accuracy alone is inadequate at a 38% base rate -- a model predicting
-    "nobody survived" scores 0.62 while being useless -- so threshold metrics,
+    Accuracy alone is inadequate at a 38% base rate (a model predicting
+    "nobody survived" scores 0.62 while being useless), so threshold metrics,
     ranking metrics and a calibration metric are all reported together.
 
     Args:
@@ -141,8 +141,8 @@ def bootstrap_ci(
 
     Each resample draws ``n`` rows with replacement and recomputes every
     metric; the interval is the 2.5th to 97.5th percentile of those values.
-    Resampling is **stratified** -- positives and negatives are drawn
-    separately, preserving the class balance -- because an unstratified
+    Resampling is stratified (positives and negatives are drawn
+    separately, preserving the class balance) because an unstratified
     resample of 179 rows occasionally produces a single-class sample for which
     ROC-AUC is undefined.
 
