@@ -42,8 +42,8 @@ committed, so the app runs right after install without Kaggle credentials.
 **Windows (PowerShell)**
 
 ```powershell
-git clone <repo-url>
-cd hw1_titanic
+git clone https://github.com/inbartam/titanic_assigment.git
+cd titanic_assigment
 py -3.14 -m venv .venv                 # any of 3.11 / 3.12 / 3.13 / 3.14
 .\.venv\Scripts\Activate.ps1           # if blocked: Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 python -m pip install --upgrade pip
@@ -62,7 +62,7 @@ $env:TITANIC_API_URL="http://127.0.0.1:8000"; streamlit run ds_app.py   # app in
 **macOS / Linux**
 
 ```bash
-git clone <repo-url> && cd hw1_titanic
+git clone https://github.com/inbartam/titanic_assigment.git && cd titanic_assigment
 python3.12 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt && pip install -e .
 streamlit run ds_app.py
